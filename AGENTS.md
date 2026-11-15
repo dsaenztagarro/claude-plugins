@@ -9,7 +9,8 @@ Instructions for AI agents working on this codebase. This file holds only what a
 | when you are… | load | how it fires |
 |---|---|---|
 | writing or changing a test, or building a component that holds state | `.claude/rules/testing.md` | opening a file its `paths:` names, which you fill |
-| planning multi-ticket work, or building, reviewing, fixing, closing or releasing its tickets | the user-level tracker pipeline: `/tracker-plan`, `tracker-batch`, `tracker-review`, `tracker-fix`, `/tracker-close`, `/tracker-release` | invoke it |
+| building a ticket or an epic end to end, from its open questions to a walked pull request, and closing it after the merge | `/tracker-build` | invoke it |
+| planning multi-ticket work, or building, reviewing, fixing, closing or releasing its tickets | the user-level tracker pipeline: `/tracker-plan`, `/tracker-review`, `/tracker-close`, `/tracker-release` | invoke it |
 | stopping, resuming, or taking new scope on near-ready work | `/tracker-pause`, `/tracker-resume`, `/tracker-amend` | invoke it |
 | handing a design to Claude Design, or reading one back | the `design-handoff` skill | invoke it |
 | raising a workflow improvement upstream | the `template-feedback` skill | invoke it |
@@ -160,6 +161,7 @@ Rules that depend on the project's tooling, each a `FILL` with its rule beside i
 
 - **Formatter on write:** <!-- FILL: the formatter command --> — runs on each file as it is written, through the format-on-write hook in `.claude/settings.local.json.example`.
 - **Commit and push hooks:** <!-- FILL: what each hook runs, and how it is installed --> — a hook verifies and never rewrites: a hook that changes files commits what nobody reviewed.
+- **Static analysis and dependency audit:** <!-- FILL: the security scanner and the dependency audit commands, or `none` --> — a security review triages their output, since a scanner's misses and false alarms are measured and an agent's judgment alone is not.
 
 ## Development Workflow
 
