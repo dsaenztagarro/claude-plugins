@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-11-15
+
+A layout no longer has a width.
+
+### Changed
+
+- **design-handoff: the full layout is drawn as wide as its content needs, and a narrow one is a set of rules drawn once at the floor.** Pages draw in the full layout and the Layout page draws the others. It drew every layout at the narrowest width it took before, a number a brief had to give and that drifted from the code.
+
 ## [1.0.5] - 2026-11-12
 
 Pages are designed for layouts, not widths.
