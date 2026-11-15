@@ -68,7 +68,7 @@ Each belongs to one of three lifetimes, and `/tracker-build` is the one command 
 | **the project** | `/tracker-roadmap` | where every epic stands, the order of epics, closing finished ones, housekeeping |
 | | `/tracker-release` | an epic closed, or a fix must ship: version, CHANGELOG, tag |
 
-Three workflows sit behind them and are never typed: `tracker-batch` builds tickets in parallel waves, for the rare epic where wall-clock matters more than accuracy; `tracker-review` and `tracker-fix` review and fix a change spanning several repositories; `tracker-audit` is `/tracker-roadmap`'s audit of shipped code.
+One workflow sits behind them and is never typed: `tracker-audit`, `/tracker-roadmap`'s audit of shipped code, a fan-out of reviewers per subsystem. Everything else is a skill driving subagents; a workflow is written when real use shows a need subagents cannot meet.
 
 Without the skills, follow the contract by hand:
 

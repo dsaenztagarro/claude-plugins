@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - **The delivery contract asks before it builds.** What a ticket leaves open goes to a person as questions before any code, and the answers amend the ticket; a surface with no design gets a brief, and the lines that need it wait. Whatever judges a change — the check, the review, the acceptance walk — runs in an agent that did not write it. The user-level `/tracker-build` skill runs this for a ticket or an epic, and the routing table names it.
-- **The README names every tracker skill by its lifetime** — a ticket or an epic, a session, the project — and the workflows behind them, so one command is the way in and the rest stay findable.
+- **The README names every tracker skill by its lifetime** — a ticket or an epic, a session, the project — and the one workflow behind them, so one command is the way in and the rest stay findable.
 - **AGENTS.md names the static analysis and dependency audit** the gate runs, so a security review triages a scanner's output rather than guessing.
 
 ## [1.0.5] - 2026-11-12
