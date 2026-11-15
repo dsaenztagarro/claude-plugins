@@ -9,7 +9,7 @@ Instructions for AI agents working on this codebase. This file holds only what a
 | when you are… | load | how it fires |
 |---|---|---|
 | writing or changing a test, or building a component that holds state | `.claude/rules/testing.md` | opening a file its `paths:` names, which you fill |
-| building one ticket end to end, from its open questions to a walked pull request | `/tracker-build` | invoke it |
+| building a ticket or an epic end to end, from its open questions to a walked pull request, and closing it after the merge | `/tracker-build` | invoke it |
 | planning multi-ticket work, or building, reviewing, fixing, closing or releasing its tickets | the user-level tracker pipeline: `/tracker-plan`, `tracker-batch`, `tracker-review`, `tracker-fix`, `/tracker-close`, `/tracker-release` | invoke it |
 | stopping, resuming, or taking new scope on near-ready work | `/tracker-pause`, `/tracker-resume`, `/tracker-amend` | invoke it |
 | handing a design to Claude Design, or reading one back | the `design-handoff` skill | invoke it |

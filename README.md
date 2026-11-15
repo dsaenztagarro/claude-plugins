@@ -53,7 +53,24 @@ Installed with [APM](https://github.com/microsoft/apm) into `.claude/skills/` an
 
 ### The delivery pipeline, at user level
 
-Planning, building one ticket or a batch, review, fix, close and release run through user-level tracker skills (`/tracker-plan`, `/tracker-build`, `tracker-batch`, `tracker-review`, `tracker-fix`, `/tracker-close`, `/tracker-release`), installed once per person and never copied into a project. Without them, follow the contract by hand:
+Planning, building, review, close and release run through user-level tracker skills, installed once per person and never copied into a project.
+Each belongs to one of three lifetimes, and `/tracker-build` is the one command for the first: it calls the ticket-life skills itself, and each stays invocable on its own for work it did not start.
+
+| lifetime | skill | when |
+|---|---|---|
+| **a ticket or an epic** | `/tracker-plan` | a plan is confirmed: it becomes a marked section of the epic |
+| | `/tracker-build` | a ticket, or an epic's next batch, to a reviewed and walked pull request; run again after the merge, it closes what merged |
+| | `/tracker-review` | called by `/tracker-build`; on its own, any pull request it did not build |
+| | `/tracker-close` | called by `/tracker-build` after the merge; on its own, a ticket whose pull request merged by hand |
+| | `/tracker-amend` | new scope surfaces on near-ready work: it goes to the ticket, for a clean session |
+| **a session** | `/tracker-pause` | stopping: a note on the ticket, running work landed or stopped |
+| | `/tracker-resume` | starting: the note read back against git and the tracker |
+| **the project** | `/tracker-roadmap` | where every epic stands, the order of epics, closing finished ones, housekeeping |
+| | `/tracker-release` | an epic closed, or a fix must ship: version, CHANGELOG, tag |
+
+Three workflows sit behind them and are never typed: `tracker-batch` builds tickets in parallel waves, for the rare epic where wall-clock matters more than accuracy; `tracker-review` and `tracker-fix` review and fix a change spanning several repositories; `tracker-audit` is `/tracker-roadmap`'s audit of shipped code.
+
+Without the skills, follow the contract by hand:
 
 - **A plan is a marked section of the parent issue's description**, replaced in place when it changes.
 - **Before any code, what a ticket leaves open goes to a person as questions**, and the answers amend the ticket; a surface with no design gets a brief, and the lines that need it wait for the design.
