@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **The delivery contract asks before it builds.** What a ticket leaves open goes to a person as questions before any code, and the answers amend the ticket; a surface with no design gets a brief, and the lines that need it wait. Whatever judges a change — the check, the review, the acceptance walk — runs in an agent that did not write it. The user-level `/tracker-build` skill runs this for one ticket, and the routing table names it.
+- **AGENTS.md names the static analysis and dependency audit** the gate runs, so a security review triages a scanner's output rather than guessing.
+
 ## [1.0.5] - 2026-11-12
 
 Pages are designed for layouts, not widths.

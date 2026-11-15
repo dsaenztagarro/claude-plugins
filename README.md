@@ -53,9 +53,11 @@ Installed with [APM](https://github.com/microsoft/apm) into `.claude/skills/` an
 
 ### The delivery pipeline, at user level
 
-Planning, batch building, review, fix, close and release run through user-level tracker skills (`/tracker-plan`, `tracker-batch`, `tracker-review`, `tracker-fix`, `/tracker-close`, `/tracker-release`), installed once per person and never copied into a project. Without them, follow the contract by hand:
+Planning, building one ticket or a batch, review, fix, close and release run through user-level tracker skills (`/tracker-plan`, `/tracker-build`, `tracker-batch`, `tracker-review`, `tracker-fix`, `/tracker-close`, `/tracker-release`), installed once per person and never copied into a project. Without them, follow the contract by hand:
 
 - **A plan is a marked section of the parent issue's description**, replaced in place when it changes.
+- **Before any code, what a ticket leaves open goes to a person as questions**, and the answers amend the ticket; a surface with no design gets a brief, and the lines that need it wait for the design.
+- **Whatever judges a change runs in an agent that did not write it:** the check against the ticket and the project's rules, the review, the final acceptance walk.
 - **Every ticket and every pull request opens with `## Sequence`:** the previous and the next.
 - **One worktree per writer, one pull request per batch;** a person merges.
 - **Review findings are threads on the pull request**, fixed one commit each.
