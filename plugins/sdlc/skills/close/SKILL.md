@@ -36,6 +36,9 @@ Several tickets are closed one at a time, each against its own evidence, and rep
 - **Anything unticked:** leave it open with its pause note.
 - **Only live checks unticked:** label it `live-check`, the shipped state in `/sdlc:roadmap`'s model, so it no longer reads as unbuilt. Remove the label when the ticket closes.
 - **Decision-log lines** a batch pull request lists under its `Decision log` heading are posted now, each as one dated line on its theme's decision-log issue.
+- **How to test it:** add or replace a section in the ticket's description between `<!-- how-to-test:start -->` and `<!-- how-to-test:end -->`, before any implementation-plan or `where-i-stopped` section, so the user can verify the ticket by hand and learn the feature from it.
+  Each scenario gives its purpose, its commands from the repository root on the default branch, and the real output you saw. A step the project's rules forbid you to run is marked "run it yourself", and a "Not testable yet" list names each blocked line with its ticket.
+  Read the description right before writing, change only this section, and read it back.
 - **Leave the epic's description alone:** its plan section is `/sdlc:plan`'s, and progress is the sub-issues' state.
   Closing the epic is `/sdlc:roadmap`'s housekeeping; when this was the epic's last open child, say so in the report.
 
