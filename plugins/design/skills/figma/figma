@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# figma — read a Figma design from the REST API without ever printing the token.
+#
+#   figma render <figma-url> [scale]       PNG of the node, plus an overview and vertical slices
+#   figma crop   <figma-url> X0 Y0 X1 Y1   crop the rendered PNG, coordinates in its own pixels
+#   figma texts  <figma-url>               every TEXT layer's characters, from the node JSON
+#
+# Everything lands in ~/.cache/figma/<file-key>/<node-id>/ and is reused: rate limits are scarce,
+# so a second call never refetches. FIGMA_FRESH=1 forces a refetch.
+set -euo pipefail
+
+die() { echo "figma: $*" >&2; exit 1; }
+
+# FIGMA_TOKEN from the environment when it is a personal access token; otherwise from a fresh login
+# shell, where a secrets manager may set it. An interactive shell writes terminal escapes to stdout,
+# so the token is fished out by a marker.
+token() {
+  local t=${FIGMA_TOKEN:-}
+  if [[ $t != figd_* ]]; then
+    t=$("${SHELL:-/bin/sh}" -lic 'printf "\n__FIGMA__%s\n" "$FIGMA_TOKEN"' 2>/dev/null | sed -n 's/^__FIGMA__//p' | tail -1)
+  fi
+  [[ $t == figd_* ]] || die "no usable FIGMA_TOKEN in the environment or a fresh login shell (got '${t:0:4}…')"
+  printf %s "$t"
+}
+
+parse() {
+  local url=$1
+  KEY=$(sed -nE 's#.*figma\.com/(design|file|proto|board)/([A-Za-z0-9]+).*#\2#p' <<<"$url")
+  NODE=$(sed -nE 's#.*[?&]node-id=([0-9]+)[-:]([0-9]+).*#\1:\2#p' <<<"$url")
+  [[ -n $KEY && -n $NODE ]] || die "need a figma.com/design/<key>/...?node-id=N-M URL"
+  DIR=~/.cache/figma/$KEY/${NODE/:/-}
+  mkdir -p "$DIR"
+}
+
+# GET an API path into a file. On 429 it reports how long Figma asks to wait and stops:
+# retrying only extends the lockout.
+get() {
+  local path=$1 out=$2 headers status tok
+  tok=$(token)
+  headers=$(mktemp)
+  status=$(curl -s -D "$headers" -o "$out" -w '%{http_code}' -H "X-Figma-Token: $tok" "https://api.figma.com$path")
+  if [[ $status == 429 ]]; then
+    local wait tier
+    wait=$(awk 'tolower($1)=="retry-after:"{print $2+0}' "$headers")
+    tier=$(awk 'tolower($1)=="x-figma-rate-limit-type:"{print $2}' "$headers" | tr -d '\r')
+    rm -f "$out" "$headers"
+    die "429 on ${path%%\?*}: retry after ${wait}s (~$(( wait / 3600 ))h), limit type '$tier'. Do not retry; try another endpoint (render works when nodes is locked)."
+  fi
+  rm -f "$headers"
+  [[ $status == 200 ]] || { local body; body=$(head -c 300 "$out"); rm -f "$out"; die "HTTP $status on ${path%%\?*}: $body"; }
+}
+
+render() {
+  parse "$1"; local scale=${2:-1} png=$DIR/frame@${2:-1}.png
+  if [[ ! -s $png || -n ${FIGMA_FRESH:-} ]]; then
+    get "/v1/images/$KEY?ids=$NODE&format=png&scale=$scale" "$DIR/images.json"
+    local src; src=$(jq -r --arg n "$NODE" '.images[$n] // empty' "$DIR/images.json")
+    [[ -n $src ]] || die "render returned no image: $(head -c 300 "$DIR/images.json")"
+    curl -s -o "$png" "$src"
+  fi
+  python3 - "$png" "$DIR" <<'EOF'
+import sys, math
+from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
+png, out = sys.argv[1], sys.argv[2]
+im = Image.open(png); w, h = im.size
+# Read the overview first, then the slice or crop that holds the detail.
+f = max(1, math.ceil(w / 2000))
+im.resize((w // f, h // f)).save(f"{out}/overview.png")
+n = max(1, math.ceil(w / 2048))
+for i in range(n):
+    im.crop((i * w // n, 0, (i + 1) * w // n, h)).save(f"{out}/slice{i}.png")
+print(f"{png}  {w}x{h}")
+print(f"{out}/overview.png  1 overview px = {f} px")
+print(f"{out}/slice0..{n-1}.png  each {w // n} px wide")
+EOF
+}
+
+crop() {
+  parse "$1"; shift
+  local png; png=$(ls -t "$DIR"/frame@*.png 2>/dev/null | head -1)
+  [[ -n $png ]] || die "nothing rendered yet; run: figma render <url>"
+  python3 - "$png" "$DIR" "$@" <<'EOF'
+import sys
+from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
+png, out, *box = sys.argv[1:]
+box = tuple(int(v) for v in box)
+name = f"{out}/crop_{'_'.join(map(str, box))}.png"
+Image.open(png).crop(box).save(name)
+print(name)
+EOF
+}
+
+texts() {
+  parse "$1"
+  local json=$DIR/node.json
+  [[ -s $json && -z ${FIGMA_FRESH:-} ]] || get "/v1/files/$KEY/nodes?ids=$NODE" "$json"
+  jq -r --arg n "$NODE" '.nodes[$n].document | .. | objects | select(.type == "TEXT") | .characters' "$json" | awk '!seen[$0]++'
+}
+
+case ${1:-} in
+  render) shift; render "$@" ;;
+  crop)   shift; crop "$@" ;;
+  texts)  shift; texts "$@" ;;
+  *) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac

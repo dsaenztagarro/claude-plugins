@@ -1,6 +1,6 @@
 ---
 name: design-repo
-description: Create a design repository — a product's design or a shared design system — from one skeleton, so it starts in the layout every design repository keeps and states its Claude Design kind; or adopt the skeleton in an existing one. Use when a project first needs a design repository, when a shared design system gets its own, or when an existing design repository should take the current skeleton.
+description: "Create a design repository, a product's design or a shared design system, from one skeleton, or bring an existing one to it. Use when a project first needs a design repository, or an existing one should take the current skeleton."
 ---
 
 # Creating a design repository
@@ -58,7 +58,7 @@ chmod +x bin/*
 bundle install     # writes Gemfile.lock, which is committed
 ```
 
-The skeleton keeps its scripts in `_bin/` because APM does not deploy a folder named `bin` inside a skill; the copy renames it.
+The skeleton keeps its scripts in `_bin/`, so the plugin ships them as files to copy rather than as commands; the copy renames it `bin/`.
 
 A Project linked to a shared system replaces `__SHARED__` in `bin/ds-status` with that system's repository name. A Project linked to none deletes `bin/ds-status` and its test.
 

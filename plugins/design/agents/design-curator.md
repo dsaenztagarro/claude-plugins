@@ -1,6 +1,6 @@
 ---
 name: design-curator
-description: Reconciles the application to a design its design project has already shipped, in the vendored artefact's form — for a stylesheet bundle, deletes the application's copies of what the bundle ships, restores ancestors the markup dropped, and writes the components it ships but the markup never uses; for a token set, deletes the colour and glyph literals the set names, reads the token instead, and copies each page's composition with a golden frame per state. Use when adopting a newly read design (`/adopt-designs`), or when the project's triage command reports outstanding findings. Never adapts, translates or edits what the design ships, and never edits a generated file.
+description: "Reconciles the application to a design its design project has already shipped, in the vendored artefact's form, deleting the application's copies of what the design ships. Use after adopt-designs, or when the project's triage command reports findings."
 tools: Bash, Read, Write, Edit, Glob, Grep
 ---
 

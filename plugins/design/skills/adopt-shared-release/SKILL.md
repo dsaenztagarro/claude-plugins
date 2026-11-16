@@ -1,6 +1,6 @@
 ---
 name: adopt-shared-release
-description: Land a shared design system's release in a product — move the pin, fix what the release removed, then retire the stand-ins the release lands, only once the product's design-system copy is current. Runs the landing order of design-handoff §5. Use when a shared design system ships a release, when bumping the package that carries it, or when asked to delete a stand-in for a component the shared system now ships.
+description: "Land a shared design system's release in a product, retiring each stand-in only once the product's copy is current. Use when a shared design system ships a release, or when asked to delete a stand-in the shared system now ships."
 ---
 
 # Adopting a shared design system's release

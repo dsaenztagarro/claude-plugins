@@ -1,0 +1,9 @@
+{
+  "name": "design",
+  "version": "2.0.0",
+  "description": "The Claude Design handoff: design repositories, briefs, reading an export back and adopting it",
+  "author": { "name": "David Sáenz" },
+  "homepage": "https://github.com/dsaenztagarro/agent-sdlc",
+  "repository": "https://github.com/dsaenztagarro/agent-sdlc",
+  "license": "MIT"
+}
