@@ -6,7 +6,7 @@
     {
       "name": "sdlc",
       "source": "./plugins/sdlc",
-      "description": "The delivery pipeline on the issue tracker: plan, amend, review, close, pause, resume, release, roadmap, and the build-batch and review workflows"
+      "description": "The delivery pipeline on the issue tracker: plan, amend, review, close, pause, resume, release, roadmap, and the build-batch and review-epic workflows"
     },
     {
       "name": "design",
