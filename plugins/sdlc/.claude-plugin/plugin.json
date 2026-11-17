@@ -1,7 +1,7 @@
 {
   "name": "sdlc",
   "version": "2.0.0",
-  "description": "The delivery pipeline on the issue tracker: plan, amend, review, close, pause, resume, release, roadmap, and the build-batch and review-epic workflows",
+  "description": "The delivery pipeline on the issue tracker: plan, build, amend, review, close, pause, resume, release and roadmap",
   "author": { "name": "David Sáenz" },
   "homepage": "https://github.com/dsaenztagarro/agent-sdlc",
   "repository": "https://github.com/dsaenztagarro/agent-sdlc",

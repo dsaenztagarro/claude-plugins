@@ -11,15 +11,17 @@ The kit installs as two Claude Code plugins from this repository's marketplace, 
 ### Changed
 
 - **The design skills and agents ship as the `design` plugin**, installed with `claude plugin install design@agent-sdlc`. They were an APM package deployed into each project, so every project carried its own copy. `figma` joins them, reading its token from `FIGMA_TOKEN` and its script through the skill's own directory.
-- **The delivery pipeline ships as the `sdlc` plugin**, with the `tracker-` prefix dropped: `/sdlc:plan`, `/sdlc:amend`, `/sdlc:review`, `/sdlc:close`, `/sdlc:pause`, `/sdlc:resume`, `/sdlc:release`, `/sdlc:roadmap`, plus `/sdlc:git-push` and `/sdlc:template-feedback`. It was a set of user-level skills each machine copied in, with no namespace or version. Each description now says only when to use the skill, and the workflow-run sections of pause and resume load on demand from their `references/`.
-- **`/sdlc:build-batch` has no Align phase and no close mode.** The plan's notes settle every name tickets of one wave share, since a later stage still found cross-ticket defects after Align ran; closing runs as `/sdlc:close` in the session.
-- **`/sdlc:review-epic`, the multi-repository review workflow, verifies its gaps only when it publishes them,** since a caller that holds the gaps walks each one in the product. It takes the tracker as a required argument.
+- **The delivery pipeline ships as the `sdlc` plugin**, with the `tracker-` prefix dropped: `/sdlc:plan`, `/sdlc:build`, `/sdlc:amend`, `/sdlc:review`, `/sdlc:close`, `/sdlc:pause`, `/sdlc:resume`, `/sdlc:release`, `/sdlc:roadmap`, plus `/sdlc:git-push` and `/sdlc:template-feedback`. It was a set of user-level skills each machine copied in, with no namespace or version. Each description now says only when to use the skill, and the workflow-run sections of pause and resume load on demand from their `references/`.
+- **`/sdlc:build` takes a ticket, or an epic's next batch, to a reviewed and walked pull request, then closes it once merged.** An independent agent asks what the tickets leave open before any code, a design gate parks the lines an undrawn surface needs, and each ticket gets a fresh builder that reads the path-scoped rules for what it writes and a fresh checker. An epic's tickets are built one after another on one branch: tickets built in parallel could not see each other's code.
+- **A test earns its place by the realistic mistake that fails it.** `/sdlc:plan` and `/sdlc:amend` name that mistake beside each rule test and cut one with none, `/sdlc:review` reports a test no realistic mistake fails as a finding whose fix is deleting it, and the roadmap's audit sweeps each subsystem's checks.
+- **`/sdlc:review` splits a change too large for one reader** into one fresh reviewer per pull request, and fixes findings in several repositories with one fixer per repository.
+- **`/sdlc:close` writes a ticket's "How to test it" section**, so a person can verify the ticket by hand.
 - **The roadmap's audit runs one subagent per subsystem, refuted in the session,** in place of its own workflow.
 
 ### Removed
 
 - **The APM package:** `.apm/` and `apm.yml`.
-- **The `tracker-fix` and `tracker-audit` workflows,** replaced by review's in-session fix rounds and the roadmap's audit.
+- **The batch, review, fix and audit workflows.** `/sdlc:build` builds an epic one ticket at a time, `/sdlc:review` splits a large change by pull request, and the roadmap runs its audit with one subagent per subsystem.
 
 ## [1.0.6] - 2026-11-15
 

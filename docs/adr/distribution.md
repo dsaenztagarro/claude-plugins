@@ -23,17 +23,18 @@ A project never carries a copy of a plugin's skill or agent; what its copy did d
 
 A skill ships here only if it works, and is safe to publish, on a machine that is not the maintainer's: no home-directory path, no employer, tracker site or product name, no secret's location.
 Anything tied to one machine, employer or person ships from a private marketplace instead.
-A workflow takes such a fact as a required argument, never a default.
+A skill or script takes such a fact as a required argument, never a default.
 
 ### The namespace replaces the prefix
 
 The plugin's name already says what a skill belongs to, so a skill drops the prefix it carried at user level: `/sdlc:plan`, not `/sdlc:tracker-plan`.
 Two components of one plugin never share a name: a workflow named like a skill shadows it, and only one of them is listed.
 
-### Plugins ship Workflow scripts
+### A plugin can ship Workflow scripts, and ships none until real use needs one
 
-A plugin's `workflows/` directory is discovered like its skills, and a script is invoked by its `meta.name` under the plugin's namespace: `/sdlc:build-batch`.
-A paused run is relaunched by that name on any machine with the plugin, so no script path has to be synced between machines.
+A plugin's `workflows/` directory is discovered like its skills, and a script is invoked by its `meta.name` under the plugin's namespace, so a paused run is relaunched by name on any machine with the plugin.
+The pipeline ships none: `/sdlc:build` builds an epic one ticket at a time with plain subagents, since parallel writers buy wall-clock only and pay for it in alignment, coherence review and integration, and `/sdlc:review` splits a large change into one fresh reviewer per pull request.
+A workflow is written when real use shows a need these cannot hold, for that use.
 
 ### Only what earns its place ships
 

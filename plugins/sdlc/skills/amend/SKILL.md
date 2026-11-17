@@ -40,7 +40,7 @@ It holds, in this order:
 - **Rules**, each one followed by the test that will hold it, named after the rule.
   Behaviour goes into tests, never into a decision record. A record changes only for a reason the code cannot state.
 - **Tests**, which are the ticket's specification and, once built, its coverage:
-  - the rule tests, one per rule, named for the rule;
+  - the rule tests, one per rule, named for the rule, each with the realistic mistake that would fail it. A check earns its place by that mistake, so one with none is cut;
   - **End to end**: one named scenario per user flow, through the real path to the surface that shows the result, as the project's testing rule defines it. Existing scenarios the new scope changes are listed too, with what changes;
   - the mutation checks to record.
 
