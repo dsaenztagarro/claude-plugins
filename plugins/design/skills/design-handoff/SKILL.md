@@ -1,6 +1,6 @@
 ---
 name: design-handoff
-description: The Claude Design handoff loop — which repository is which, how a design repository is laid out, the three routes into the design project, writing a brief, reading an export back, and closing a brief out. Use when creating or reviewing a design repository, writing a design brief, handing work to Claude Design, reading an export back into the design repository, or building a surface from a design page.
+description: "The Claude Design handoff loop: which repository is which, the routes into the design project, briefs, and reading an export back. Use when writing a design brief, handing work to Claude Design, or building a surface from a design page."
 ---
 
 # Working with Claude Design: the handoff loop

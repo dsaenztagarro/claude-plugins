@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+The kit installs as two Claude Code plugins from this repository's marketplace, once per machine, with one copy of each skill.
+
+### Changed
+
+- **The design skills and agents ship as the `design` plugin**, installed with `claude plugin install design@agent-sdlc`. They were an APM package deployed into each project, so every project carried its own copy. `figma` joins them, reading its token from `FIGMA_TOKEN` and its script through the skill's own directory.
+- **The delivery pipeline ships as the `sdlc` plugin**, with the `tracker-` prefix dropped: `/sdlc:plan`, `/sdlc:amend`, `/sdlc:review`, `/sdlc:close`, `/sdlc:pause`, `/sdlc:resume`, `/sdlc:release`, `/sdlc:roadmap`, plus `/sdlc:git-push` and `/sdlc:template-feedback`. It was a set of user-level skills each machine copied in, with no namespace or version. Each description now says only when to use the skill, and the workflow-run sections of pause and resume load on demand from their `references/`.
+- **`/sdlc:build-batch` has no Align phase and no close mode.** The plan's notes settle every name tickets of one wave share, since a later stage still found cross-ticket defects after Align ran; closing runs as `/sdlc:close` in the session.
+- **`/sdlc:review-epic`, the multi-repository review workflow, verifies its gaps only when it publishes them,** since a caller that holds the gaps walks each one in the product. It takes the tracker as a required argument.
+- **The roadmap's audit runs one subagent per subsystem, refuted in the session,** in place of its own workflow.
+
+### Removed
+
+- **The APM package:** `.apm/` and `apm.yml`.
+- **The `tracker-fix` and `tracker-audit` workflows,** replaced by review's in-session fix rounds and the roadmap's audit.
+
 ## [1.0.6] - 2026-11-15
 
 A layout no longer has a width.

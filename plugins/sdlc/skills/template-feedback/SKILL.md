@@ -1,6 +1,6 @@
 ---
 name: template-feedback
-description: Raise a reusable, project-agnostic improvement to the agent-sdlc workflow itself — a rule AGENTS.md should state, a skill step that misfires, a docs-taxonomy gap — as one checklist item on the template's open feedback issue. Not for project-specific code, config or content. Surfaces the proposal first and writes upstream only on the user's OK. May be user-invoked as `/template-feedback [idea]`, or reached for when such an improvement surfaces during other work.
+description: "Raise a reusable, project-agnostic improvement to the agent-sdlc workflow as one item on the template's open feedback issue, after the user's OK. Use when such an improvement surfaces during other work, or as /sdlc:template-feedback [idea]."
 argument-hint: "[short description of the improvement]"
 ---
 

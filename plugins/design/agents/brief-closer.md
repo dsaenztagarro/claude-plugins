@@ -1,6 +1,6 @@
 ---
 name: brief-closer
-description: Closes out a design brief in the repository that holds it — the product's design repository or the shared system's — once what it asked for has landed — verifies each ask in the design project's export and the vendored artefact, re-points everything that cited the brief, and only then deletes or amends it. Use when an export lands that may satisfy an open brief, after adopt-designs vendors it, after adopt-shared-release moves the pin, or when a ticket that ships a surface reaches its checkbox for its ask leaving the brief. Never deletes a brief it has not verified.
+description: "Closes out a design brief once what it asked for has landed: verifies each ask in the export and the vendored artefact, re-points what cited the brief, then deletes or amends it. Use after adopt-designs or adopt-shared-release, or when a shipped surface may satisfy a brief."
 tools: Bash, Read, Write, Edit, Glob, Grep
 ---
 
