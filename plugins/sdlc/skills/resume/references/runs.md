@@ -4,7 +4,7 @@ Read by `/sdlc:resume` when the pause note has a **Runs** line.
 The paused runs are gone. What survives is their branches, their pull requests and the relaunch line, and this machine may never have seen any of them.
 
 1. **Fetch,** then rebuild a worktree for every branch the note names that has no worktree here: `git fetch origin`, then `git worktree add .claude/worktrees/<b> <b>`. Git creates the local branch tracking `origin/<b>`. Never cut a branch the note names afresh: that discards the commits on it.
-2. **Check that each relaunch exists here:** a plugin workflow's plugin is installed, or a script is at its path. When it is not, the next action is installing the plugin or fetching the repository that holds the script, not relaunching.
+2. **Check that each relaunch exists here:** the workflow script is at its path. When it is not, the next action is installing the plugin or fetching the repository that holds the script, not relaunching.
 3. **Classify each run** by its pull request:
    - **Merged:** its next step is the close run on the default branch.
    - **Open:** run the gate on its branch, then merge it.

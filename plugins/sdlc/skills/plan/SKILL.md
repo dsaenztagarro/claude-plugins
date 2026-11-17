@@ -26,7 +26,7 @@ That reader has the tracker and the repository and never saw this conversation.
   - the verification level and procedure, and the human acceptance steps
 - **A ticket's Tests section is its specification.**
   - It has two parts.
-    - **The rules:** one `test "…"` per rule, named for the rule and not the mechanics.
+    - **The rules:** one `test "…"` per rule, named for the rule and not the mechanics, with the realistic mistake that would fail it beside it. A check earns its place by that mistake: one with no realistic mistake behind it is cut here, before anyone builds it.
     - **End to end:** one named scenario per user flow, through the real path to the surface that shows the result; the project's testing rule says what that path is.
   - **It says what each test proves, never where it lives.** The file and the layer are decided while building, against the code as it stands then. A location written in advance pushes the builder to force a test into a place a refactor has since made wrong.
   - **The same list does three jobs.** Before the code, it is the ticket's specification. Once built, it is the coverage: the suite carries every name word for word. Afterwards, `grep 'test "'` reads it back as the app's specification.

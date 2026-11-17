@@ -45,7 +45,7 @@ Other tracker skills refer here rather than repeat it.
 | closing an epic; collapsing a finished phase; retiring merged worktrees; the audit | **this skill**, `housekeep` |
 | where a session stopped | `/sdlc:pause`, `/sdlc:resume` |
 | a release once an epic closes | `/sdlc:release` |
-| building a phase | `/sdlc:build-batch` |
+| building a phase; closing its merged tickets | `/sdlc:build <epic>`, run again after the merge |
 
 ## 1. Status — the default, read-only
 
@@ -62,7 +62,7 @@ Other tracker skills refer here rather than repeat it.
 
    then:
    - **Live checks waiting on you:** per epic, the tickets; the commands are in each one's closing comment.
-   - **Mismatches:** an open epic with every child closed; an open ticket whose PR merged with no close run (it goes to `/sdlc:close`); an epic not under the roadmap; an epic with no `## Sequence`, or one disagreeing with its neighbour or the roadmap's order; a roadmap phase table missing an epic.
+   - **Mismatches:** an open epic with every child closed; an open ticket whose PR merged with no close run (it goes to `/sdlc:build`, which closes what a merged pull request carried); an epic not under the roadmap; an epic with no `## Sequence`, or one disagreeing with its neighbour or the roadmap's order; a roadmap phase table missing an epic.
    - **Next:** the first epic in roadmap order that is not done or shipped, provided the epic before it is done or shipped; its first ticket by its own plan.
 
 Write nothing. Offer `housekeep` when there are mismatches.
@@ -84,7 +84,7 @@ Read, splice and write every description as `/sdlc:plan` does, and read it back.
 Reviewing ticket by ticket rereads the same files and cannot see a concept built twice by two tickets, so the audit reads the code by subsystem.
 
 1. **Map the subsystems** the closed epics' merged range touched (`git diff --stat <sha before the phase>..<base>`), and say how many there are: the audit costs one subagent per subsystem, so get the user's go-ahead.
-   Launch them in one message. Each reads its subsystem through two lenses — idiom against how the industry builds that kind of part, and one concept, one construct — and returns each finding with its file, line, claim and fix. It edits nothing.
+   Launch them in one message. Each reads its subsystem through three lenses — idiom against how the industry builds that kind of part; one concept, one construct; and a sweep of the existing checks covering it, since a check earns its place by the realistic mistake that fails it — and returns each finding with its file, line, claim and fix. It edits nothing.
    **Refute each finding in this session** before keeping it: look for the code, test or decision record that makes it false. Keep the confirmed ones in a scratchpad file, never in the repository.
 2. **Findings become tickets** under one standing epic, `Housekeeping — idiom and duplication`, created once, last on the roadmap, and reused by every later audit. Each finding is written as a ticket through `/sdlc:amend`'s procedure, after showing the list and confirming. Two findings fixed by one change are one ticket.
 3. **An idiom ruling** that the project should keep, rather than fix, amends the decision record that owns the theme, as one line, so the next audit does not raise it again.

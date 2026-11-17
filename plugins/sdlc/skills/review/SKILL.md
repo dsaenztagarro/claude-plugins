@@ -35,6 +35,7 @@ With no open pull request, stop and say so. A review needs a change to comment o
 1. Read the requirements once: the ticket's done-when and its Tests section. They are already the catalogue; do not rebuild one.
 2. Read the whole diff (`git diff <base>...HEAD`) and, around it, only the code the diff's risky branches depend on: a changed query, a new constraint and every writer it binds, a filter whose callers changed meaning, a removed reader's callers.
 3. Check each done-when line against the diff and a named test. A line with no test is a finding; a test the ticket names but the diff lacks is a finding.
+   A check earns its place by the realistic mistake that fails it, so a test in the diff that no realistic mistake fails is a finding too. It claims no failure, so it is not walked, and its cheap fix is to delete it.
 4. Refute each finding yourself: look for the code or test that makes it false, and drop it if you find one.
 5. Do not re-run the gate. Cite CI on the head commit, or the run the author recorded on the ticket or the PR; run it only when neither exists for this commit.
 
@@ -48,9 +49,9 @@ Why: an author reads the diff through what it meant the code to do, and an autho
 - A later round after a fix round is again a fresh agent, since this session wrote those fixes.
 A session that met the change only by being asked to review it is already independent and reviews directly.
 
-**The workflow — only when the direct path cannot hold the change.** An epic, or a ticket spanning three or more repositories, or design sources (Figma frames, documents) whose requirements are not already in the ticket.
-It extracts requirements from every source, traces them per area across the repositories and refutes each gap with a fresh agent, so it costs a dozen agents or more: say so and get the user's go-ahead before launching.
-Launch it as `/sdlc:review-epic` with `ticket`, `scratch`, `tracker` (required: the tracker and its site), and `repos` with each repository's `pr` URL. Pass `publish: false`: the workflow then posts nothing, skips its Verify phase because step 3's walk refutes the same gaps, and leaves its gaps in `<scratch>/gaps.json`, the candidates for step 3. It does not run the gate unless you pass `runSuites: true`, which you do only when neither CI nor the author has run it on the head commit. Put the project's standing decisions (what is deliberately not a finding) and the triage rules of step 4 in `context`.
+**A change too large for one reader** — several pull requests, or three or more repositories — is split: one fresh reviewer per pull request, each briefed as above, and the session merges their findings before step 3.
+Design sources (Figma frames, documents) whose requirements are not in the ticket are read first, by one agent that writes the missing lines into the ticket as a `QA:` comment, so every reviewer reviews against the ticket.
+No plugin workflow does this: when real use shows a change these steps cannot hold, write one for it then.
 
 ## 3. Reproduce each finding in the product
 
@@ -84,9 +85,8 @@ Each finding gets two marks, and the pair decides what happens to it.
 ## 5. Rounds: review, fix, review again, at most four
 
 1. **Review round:** steps 2–4 on the branch's current head. A later round reviews the whole PR again, but posts only findings that are new: not one already fixed, accepted or reported.
-2. **Fix round:** on the PR's branch, each fix-it finding gets a test that fails first, then the fix, one commit per finding. Run the project's gate once for the round, push with `/sdlc:git-push`, and reply on each finding's thread with the commit and resolve it.
+2. **Fix round:** on the PR's branch, each fix-it finding gets a test that fails first, then the fix, one commit per finding; a test no realistic mistake fails is deleted instead. Run the project's gate once for the round, push with `/sdlc:git-push`, and reply on each finding's thread with the commit and resolve it. Findings in several repositories get one fixer per repository, each in its own worktree.
 3. **Stop** when a review round leaves nothing to fix, or after the fourth fix round. Whatever a fifth review would still need goes into the last summary for the user, unfixed.
-4. **Learn,** when the project's instructions name a step that turns fixed findings into rules: once the rounds stop, run it on the pull request and the findings fixed in it, with each one's commit.
 
 ## 6. Where each kept finding goes
 
@@ -99,5 +99,4 @@ Post a round's kept findings through the forge: on GitHub one review, `gh api re
 ## 7. Report
 
 Give, per pull request: the review URL, the rounds run, and per round the counts fixed, accepted and reported, with the commits each fix round pushed.
-When a learn step ran, add its output's link and one line per fixed finding: the rule it produced, or why it taught nothing.
 End on what is left: one line per accepted edge case, with why the walk could not reproduce it and what would make it real.
