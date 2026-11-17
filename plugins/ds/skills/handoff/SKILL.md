@@ -1,5 +1,5 @@
 ---
-name: design-handoff
+name: handoff
 description: "The Claude Design handoff loop: which repository is which, the routes into the design project, briefs, and reading an export back. Use when writing a design brief, handing work to Claude Design, or building a surface from a design page."
 ---
 
@@ -22,20 +22,20 @@ If this project has no user interface, or its interface takes all its colours fr
 
 **Every name this skill and its neighbours read comes from the block of names in `AGENTS.md`'s design section, and from nowhere else.** A name the block does not give is asked for, never guessed; one that does not apply is written `none`. Who reads which:
 
-- design repository, design checkout, regenerate command, design suite — this skill, `adopt-designs`, `adopt-shared-release`, and the checkout for `design-curator` too;
-- artefact form — this skill (§2, §5), `adopt-designs`, `design-curator`;
-- artefact source, vendor command — `adopt-designs`;
-- artefact vendored at — `adopt-designs`, `design-curator`;
-- cascade layer — `design-curator`;
-- triage command — `adopt-designs`, `design-curator`;
-- own component styles — `adopt-designs`, `design-curator`, `adopt-shared-release`;
-- shared design system, its channel, its checkout, its release ref and release notes, the pin command and the token sync command — `adopt-shared-release`, and the shared system's checkout for `adopt-designs` too;
+- design repository, design checkout, regenerate command, design suite — this skill, `ds:adopt`, `ds:adopt-shared-release`, and the checkout for `curator` too;
+- artefact form — this skill (§2, §5), `ds:adopt`, `curator`;
+- artefact source, vendor command — `ds:adopt`;
+- artefact vendored at — `ds:adopt`, `curator`;
+- cascade layer — `curator`;
+- triage command — `ds:adopt`, `curator`;
+- own component styles — `ds:adopt`, `curator`, `ds:adopt-shared-release`;
+- shared design system, its channel, its checkout, its release ref and release notes, the pin command and the token sync command — `ds:adopt-shared-release`, and the shared system's checkout for `ds:adopt` too;
 - decision records — this skill (§7), `brief-closer`.
 
 **A design project is named for the codebase it draws for** — `<project>-ds` beside `<project>` — so the name says which checkout its export syncs into.
 A design system shared by several projects is named for its brand or the package that ships it, never for its platform: a `web-ds` points at no repository, and stops being true the day a second web system exists.
 
-**Every design repository has one layout**, whether it holds a product's design or a shared design system: [`layout.md`](layout.md) states it folder by folder. Read it before adding a folder to one; create one with the `design-repo` skill.
+**Every design repository has one layout**, whether it holds a product's design or a shared design system: [`layout.md`](layout.md) states it folder by folder. Read it before adding a folder to one; create one with the `ds:repo` skill.
 
 The design repository and the design project share a name. Say *repository* or *project*: the difference decides whether an edit survives.
 
@@ -45,7 +45,7 @@ Design content lives outside this repository because it grows without bound, and
 
 **Exactly one generated artefact reaches this application**, and it is data — a token set, or a stylesheet bundle.
 `AGENTS.md`'s design section names it, its form, its path here, and the command that vendors it.
-**"Nothing is vendored yet, and why" is a valid state of that line** — a design still being drawn, a surface that renders the shared system's components alone — and `adopt-designs` treats it as it treats `none`: it skips what needs the artefact, and says so. A blank line is not that state: it is a missing name.
+**"Nothing is vendored yet, and why" is a valid state of that line** — a design still being drawn, a surface that renders the shared system's components alone — and `ds:adopt` treats it as it treats `none`: it skips what needs the artefact, and says so. A blank line is not that state: it is a missing name.
 A page is read by a person designing or building a surface; it is never a build input, and code never cites one.
 
 The design project holds its own files and nothing else — it cannot open either repository. Everything it knows arrives by one of three routes, each started by a person:
@@ -110,7 +110,7 @@ Only where a shared design system is vendored (§1).
 
 ### Promoting a component: one stand-in, landed by deletion
 
-The product's leaf becomes a stand-in, under a `STAND-IN — delete when the design system lands <Component>` marker, where `<Component>` is the one PascalCase name the shared system will list it under, so a search for that name finds it. The marker form reaches the design project in its own `readme.md`, seeded by the `design-repo` skill, since the project never sees this skill. The request goes in the **shared system's repository**: it amends that repository's open brief for the component's theme in `briefs/proposed/`, or opens `<theme>.brief.md` when none covers it, carrying the same rules and names, byte for byte. The application keeps writing the same names: on the web, the stand-in is a set of classes the markup writes; for a terminal client, it is a token or glyph name the renderer reads, defined in the product's design token set until the shared token set carries it.
+The product's leaf becomes a stand-in, under a `STAND-IN — delete when the design system lands <Component>` marker, where `<Component>` is the one PascalCase name the shared system will list it under, so a search for that name finds it. The marker form reaches the design project in its own `readme.md`, seeded by the `ds:repo` skill, since the project never sees this skill. The request goes in the **shared system's repository**: it amends that repository's open brief for the component's theme in `briefs/proposed/`, or opens `<theme>.brief.md` when none covers it, carrying the same rules and names, byte for byte. The application keeps writing the same names: on the web, the stand-in is a set of classes the markup writes; for a terminal client, it is a token or glyph name the renderer reads, defined in the product's design token set until the shared token set carries it.
 
 - **Byte-identical is the point.** When the component lands, the stand-in is deleted — the classes, or the local definition of the token or glyph — and no markup or renderer call changes; a stand-in that drifted from its brief turns landing into a migration.
 - **The request lives with the system that will draw it.** It joins the shared system's open brief for its theme, one theme attached to that project at a time, and leaves the brief once it lands.
@@ -125,7 +125,7 @@ The copy does not follow the shared system: a request that lands there reaches t
 
 - **`bin/ds-status`** in the product's design repository compares `pages/_ds/<id>/_ds_manifest.json` with the shared system's `system/_ds_manifest.json`, and names every token and component the copy lacks, and every token whose value moved. It sees names and values, not a component whose files changed under the same name.
 - **A stand-in has landed** once both manifests list its component and every class its rules name is defined in the copy.
-- **The landing, in order** — skipping the second step is how a landed component goes on reading as missing. The `adopt-shared-release` skill runs it, from the release's pin bump in the application to the stand-in's deletion:
+- **The landing, in order** — skipping the second step is how a landed component goes on reading as missing. The `ds:adopt-shared-release` skill runs it, from the release's pin bump in the application to the stand-in's deletion:
   1. the request lands in the shared system's project, and its repository syncs the export;
   2. the product's project refreshes its copy, and its repository syncs that export;
   3. `bin/ds-status` reports the copy current, and both manifests list the component;
@@ -159,7 +159,7 @@ The copy does not follow the shared system: a request that lands there reaches t
   commit the mirror, as produced; a defect joins its theme's brief
         |
         v
-  in this repository: vendor the artefact         adopt-designs
+  in this repository: vendor the artefact         ds:adopt
         |
         v
   build the surface against the page; tests hold the behaviour

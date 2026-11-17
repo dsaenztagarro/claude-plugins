@@ -1,11 +1,11 @@
 ---
-name: design-repo
+name: repo
 description: "Create a design repository, a product's design or a shared design system, from one skeleton, or bring an existing one to it. Use when a project first needs a design repository, or an existing one should take the current skeleton."
 ---
 
 # Creating a design repository
 
-Every design repository keeps one layout, stated folder by folder in the `design-handoff` skill's `layout.md`. Read it first.
+Every design repository keeps one layout, stated folder by folder in the `ds:handoff` skill's `layout.md`. Read it first.
 This skill starts a repository in that layout from `skeleton/`; review keeps it there.
 
 The skeleton states each kind by its files: `common/` holds what every design repository carries, and one overlay per kind adds the rest, its README included.
@@ -85,7 +85,7 @@ The README states the kind and the link, never the clicks that make them: the st
 
 Seed its own `readme.md` with the rules that must hold in every export, so that no brief has to restate them — through `/design-sync` for a Design System; for a Project, which `/design-sync` does not reach, a person adds the file:
 
-- for a product's project, the surface-only rule and its markup contract (`design-handoff` §4), so that `bin/shots` can shoot every page;
+- for a product's project, the surface-only rule and its markup contract (`ds:handoff` §4), so that `bin/shots` can shoot every page;
 - for every project, that it never writes a request, a note or a plan into its files: a component it thinks every application should share is raised in the design chat, and `bin/sync` refuses an export carrying such a file;
 - for a product's project bound to a shared system, that a stand-in's marker reads `STAND-IN — delete when the design system lands <Component>`, where `<Component>` is the one PascalCase name the shared system will list it under.
 A Design System records its id in `.design-sync/config.json`, and what a future `/design-sync` must know in `.design-sync/NOTES.md`. A Project keeps neither: nothing reaches it through `/design-sync`.

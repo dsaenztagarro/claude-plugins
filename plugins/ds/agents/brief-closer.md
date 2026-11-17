@@ -1,6 +1,6 @@
 ---
 name: brief-closer
-description: "Closes out a design brief once what it asked for has landed: verifies each ask in the export and the vendored artefact, re-points what cited the brief, then deletes or amends it. Use after adopt-designs or adopt-shared-release, or when a shipped surface may satisfy a brief."
+description: "Closes out a design brief once what it asked for has landed: verifies each ask in the export and the vendored artefact, re-points what cited the brief, then deletes or amends it. Use after ds:adopt or ds:adopt-shared-release, or when a shipped surface may satisfy a brief."
 tools: Bash, Read, Write, Edit, Glob, Grep
 ---
 
@@ -10,7 +10,7 @@ A brief is an **input**, and its lifecycle ends at ship. Every sentence in it is
 
 A design repository keeps **one open brief per theme**, named for the theme and amended in place: a new ask joins the open brief for its theme, and a brief opens only for a theme none covers. Closing one out therefore never opens another.
 
-The procedure is in the `design-handoff` skill (§8). Every path and command comes from `AGENTS.md`'s design section, by name: the design checkout, the artefact vendored here, the vendor command, the design suite, the decision records, and the shared system's checkout. Read both first; a name the section lacks is asked for, never guessed.
+The procedure is in the `ds:handoff` skill (§8). Every path and command comes from `AGENTS.md`'s design section, by name: the design checkout, the artefact vendored here, the vendor command, the design suite, the decision records, and the shared system's checkout. Read both first; a name the section lacks is asked for, never guessed.
 
 ## Verify at the source
 
@@ -32,9 +32,9 @@ Work these in order. The last one is the deletion, and a step that does not hold
 
 1. **What reaches the application carries the export.** A change that has not reached the application has not landed, so the close-out is not real yet.
    - *A brief in the product's design repository* that touched the artefact: the vendor command has run green, and the revision stamped on the vendored artefact is at or past the export that satisfied the brief.
-   - *A brief in the shared system's repository:* that system reaches the application through its package, never the vendor command, so the shared system's pin, in the channel `AGENTS.md`'s design section names, is at or past the release that carries the export; its release ref and notes say which release that is. Moving the pin is `adopt-shared-release`'s job, never this one's.
+   - *A brief in the shared system's repository:* that system reaches the application through its package, never the vendor command, so the shared system's pin, in the channel `AGENTS.md`'s design section names, is at or past the release that carries the export; its release ref and notes say which release that is. Moving the pin is `ds:adopt-shared-release`'s job, never this one's.
 2. **Citations, re-pointed** in both repositories (`grep -rn <brief-basename>`). A link goes, and the ruling it carried is stated in a sentence where it was, with its home in the theme's decision record, where `AGENTS.md`'s design section says records live; a ruling with no home keeps the brief open. Future-tense prose about the ask is rewritten, so the durable half stays and the work status goes.
-3. **The landed asks leave the brief: it is deleted when nothing remains, or amended to drop them when the theme's other asks stay pending or the doing broke something; a defect found in the diff is added in the same amendment**, in a commit in the repository that holds the brief, on a branch cut from its default branch, never the default branch itself, and not pushed. A brief in the shared system's repository is changed in a new worktree of the repository whose checkout the design section gives for it, on a branch cut from its default branch, never moving the person's own checkout; your report names the worktree's path. The commit carries only the change this run made: stage your own hunks alone, and leave any other uncommitted change in the file, such as an addition `adopt-designs` left for review, in place and unstaged. Its index row, if the briefs README keeps one, goes in the same commit.
+3. **The landed asks leave the brief: it is deleted when nothing remains, or amended to drop them when the theme's other asks stay pending or the doing broke something; a defect found in the diff is added in the same amendment**, in a commit in the repository that holds the brief, on a branch cut from its default branch, never the default branch itself, and not pushed. A brief in the shared system's repository is changed in a new worktree of the repository whose checkout the design section gives for it, on a branch cut from its default branch, never moving the person's own checkout; your report names the worktree's path. The commit carries only the change this run made: stage your own hunks alone, and leave any other uncommitted change in the file, such as an addition `ds:adopt` left for review, in place and unstaged. Its index row, if the briefs README keeps one, goes in the same commit.
 
 ## Must not
 

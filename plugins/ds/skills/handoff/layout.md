@@ -2,7 +2,7 @@
 
 Every design repository has the same layout, whatever it designs and whichever Claude Design project type it mirrors.
 A folder means the same thing in each one, so an agent that has worked in one can find its way around any other without reading the README first.
-Read this file before creating a design repository, adding a folder to one, or reviewing one; the `design-repo` skill creates one in this layout from its skeleton.
+Read this file before creating a design repository, adding a folder to one, or reviewing one; the `ds:repo` skill creates one in this layout from its skeleton.
 
 ## Two kinds, one layout
 
@@ -87,7 +87,7 @@ The requests made **to this repository's Claude Design project**, and nothing el
 
 - **A mirror.** `bin/sync` writes it with `rsync -a --delete`; nobody edits it by hand, and it is committed as produced, defects included.
 - **`pages/_ds/<project-id>/` is committed.** It is the snapshot of the shared system the pages were drawn and render against, as the export carries it. A page must render the same on any clone, so it is never a symlink to a local checkout of the shared system, and never git-ignored.
-- **`bin/ds-status` says whether that snapshot is current**, by comparing its `_ds_manifest.json` with the shared system's; `design-handoff` §5 has how the copy is refreshed.
+- **`bin/ds-status` says whether that snapshot is current**, by comparing its `_ds_manifest.json` with the shared system's; `ds:handoff` §5 has how the copy is refreshed.
 - The snapshot is not a second source: the shared system's repository is. A diff between `pages/_ds/<project-id>/` and the shared system's `system/` shows how far behind it is.
 - What a page may hold is ruled in §4 of the skill: the surface, never the application, marked up so `bin/shots` can find the surface and walk its states.
 

@@ -1,7 +1,7 @@
 # The vendor contract
 
 What a project's vendor command does, whatever its language, and the tests and guards that hold it.
-`adopt-designs` runs the vendor command and trusts what this contract makes it guarantee: the vendored file says which revision of the design repository it is, and any edit after vendoring fails the gate.
+`ds:adopt` runs the vendor command and trusts what this contract makes it guarantee: the vendored file says which revision of the design repository it is, and any edit after vendoring fails the gate.
 Each adopter implements it once, in its own stack, and names the command in `AGENTS.md`'s design section.
 
 ## One writer, one stamp per file
@@ -59,7 +59,7 @@ Against a real temporary git repository with a bare remote standing in for the d
 
 ## The guards an adopter writes
 
-The triage in `adopt-designs` marks each finding with the guard that catches it, or `NO GUARD`. These are the kinds of guard, each in its form for a stylesheet bundle (web) and for a token set (terminal). A kind the project has not written yet is one more `NO GUARD` in every triage.
+The triage in `ds:adopt` marks each finding with the guard that catches it, or `NO GUARD`. These are the kinds of guard, each in its form for a stylesheet bundle (web) and for a token set (terminal). A kind the project has not written yet is one more `NO GUARD` in every triage.
 
 | guard | web, stylesheet bundle | terminal, token set |
 |---|---|---|
