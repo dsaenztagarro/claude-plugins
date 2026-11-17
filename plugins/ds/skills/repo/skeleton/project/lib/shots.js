@@ -1,7 +1,7 @@
 // shots — a screenshot of every page in every state it names, of the application surface alone.
 //
 // A page is a snapshot of the application: one surface, every state it can be in, reached from a
-// state bar (design-handoff §4). This walks that bar on every page and captures the surface in each
+// state bar (ds:handoff §4). This walks that bar on every page and captures the surface in each
 // state, so what a reader looks at is the application and nothing drawn around it — a caption, a
 // note or a paragraph beside the surface never reaches a shot. A page that does not keep the
 // contract is named, and a brief fixes it; nothing here edits a page.

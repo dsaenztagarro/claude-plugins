@@ -13,7 +13,7 @@ The rules an agent working in this design repository needs. The consuming applic
 
 ## The layout is shared
 
-This repository keeps the layout every design repository keeps, and `bin/sync` and its tests are copies of the `design-repo` skill's skeleton: change them there, never here.
+This repository keeps the layout every design repository keeps, and `bin/sync` and its tests are copies of the `ds:repo` skill's skeleton: change them there, never here.
 
 ## A request belongs to the project that will draw it
 

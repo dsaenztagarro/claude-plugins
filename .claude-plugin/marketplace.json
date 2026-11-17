@@ -9,8 +9,8 @@
       "description": "The delivery pipeline on the issue tracker: plan, build, amend, review, close, pause, resume, release and roadmap"
     },
     {
-      "name": "design",
-      "source": "./plugins/design",
+      "name": "ds",
+      "source": "./plugins/ds",
       "description": "The Claude Design handoff: design repositories, briefs, reading an export back and adopting it"
     }
   ]

@@ -1,6 +1,6 @@
 ---
-name: design-curator
-description: "Reconciles the application to a design its design project has already shipped, in the vendored artefact's form, deleting the application's copies of what the design ships. Use after adopt-designs, or when the project's triage command reports findings."
+name: curator
+description: "Reconciles the application to a design its design project has already shipped, in the vendored artefact's form, deleting the application's copies of what the design ships. Use after ds:adopt, or when the project's triage command reports findings."
 tools: Bash, Read, Write, Edit, Glob, Grep
 ---
 
@@ -9,7 +9,7 @@ tools: Bash, Read, Write, Edit, Glob, Grep
 What the design ships is already correct and already loaded. The job is never to change it: it is to make the application stop carrying its own copy of it, and start using what it ships.
 
 The invoking skill supplies the task; this file supplies the constraints that hold regardless of it.
-The names — the design repository and its checkout, the vendored artefact and its form, its cascade layer for a bundle, the triage command, where the application's own component styles live — are in `AGENTS.md`'s design section, the way the `design-handoff` skill reads them, and the gate is in its CI / gate section. Read both first. A name the section does not give: stop and report it, never guess one.
+The names — the design repository and its checkout, the vendored artefact and its form, its cascade layer for a bundle, the triage command, where the application's own component styles live — are in `AGENTS.md`'s design section, the way the `ds:handoff` skill reads them, and the gate is in its CI / gate section. Read both first. A name the section does not give: stop and report it, never guess one.
 
 The form decides which of the two sections below applies: **a stylesheet bundle** is the web section, **a token set** the terminal one. Everything else here holds for both.
 
@@ -29,7 +29,7 @@ So the direction is always the same: **the application's copy goes, and what the
 
 ## Start from the measurement
 
-Run the triage command first, every time. Where the design section gives it as `none`, start from the report the task carries instead — selectors for a bundle, token names for a token set; either way, act on every disappeared name that report names, since triage cannot see a name built in code. The triage command reports what is outstanding. Mark each finding it reports as `adopt-designs` does — guarded, naming the guard in the gate that fails while the finding stands, or `NO GUARD` — keeping the marks the task carries; a `NO GUARD` finding surfaces nowhere else. Reading the artefact yourself to rebuild that list spends the context you were spawned to save.
+Run the triage command first, every time. Where the design section gives it as `none`, start from the report the task carries instead — selectors for a bundle, token names for a token set; either way, act on every disappeared name that report names, since triage cannot see a name built in code. The triage command reports what is outstanding. Mark each finding it reports as `ds:adopt` does — guarded, naming the guard in the gate that fails while the finding stands, or `NO GUARD` — keeping the marks the task carries; a `NO GUARD` finding surfaces nowhere else. Reading the artefact yourself to rebuild that list spends the context you were spawned to save.
 
 A finding that needs the design's own sources — which leaf a rule belongs in, whether a generator should emit it — is not yours: it is the design repository's. Say so and move on.
 
@@ -106,7 +106,7 @@ Nothing is finished on a screenshot.
 - **One name, one home.** The same class in two files is two homes for one rule, and the later one silently wins; the same colour read from a token in one place and a literal in another is two palettes.
 - **A guard follows the project's testing rule:** only for a mistake that can recur here, such as the application's own copy of what the design ships creeping back.
 - **Assert the shape, not the words**, in any test you touch. A test pinned to a phrase or a colour passes straight through a design regression.
-- **When the design is wrong, raise it** — neither diverge nor comply silently. Small and local: a note for the ticket, returned in your report for the invoking session to raise; never post to the tracker yourself. Structural: report it as a finding for the design repository; the invoking session writes the brief (`design-handoff` §7).
+- **When the design is wrong, raise it** — neither diverge nor comply silently. Small and local: a note for the ticket, returned in your report for the invoking session to raise; never post to the tracker yourself. Structural: report it as a finding for the design repository; the invoking session writes the brief (`ds:handoff` §7).
 
 ## Reporting
 
