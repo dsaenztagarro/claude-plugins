@@ -42,8 +42,8 @@ With no open pull request, stop and say so. A review needs a change to comment o
 On GitHub, `/code-review <level> <PR>` may do steps 2–4 for you, at `medium` unless the user names a level. Leave out `--comment`: its findings are candidates for step 3, not yet something to post.
 
 Beside the review, one `sdlc:rules` agent holds each changed file to the `.claude/rules/*.md` whose `paths:` match it; it is skipped when none matches.
-Every finding, the review's and the rules agent's, is written `- [high|medium|low] <file>:<line>: <what>` and recorded in a ledger for the pull request, `ledger.mts start pr-<n>`, as `/sdlc:build`'s "Findings converge or stop" runs it: the rules agent and the verifier by the hook, the review's own findings by the session through `ledger.mts node pr-<n> review <file>`.
-Then one `sdlc:verifier` tries to refute each new id; a refuted one is dropped before the walk, with the evidence that refuted it.
+Every finding, the review's and the rules agent's, is written `- [high|medium|low] <file>:<line>: <what>` and recorded in a ledger for the pull request, `ledger.mts start pr-<n>`, started before the review and the rules agent are dispatched, since the hook records a report only into a ledger already open, as `/sdlc:build`'s "Findings converge or stop" runs it: the rules agent and the verifier by the hook, the review's own findings by the session through `ledger.mts node pr-<n> review <file>`.
+Then one `sdlc:verifier`, briefed with what `ledger.mts still-open pr-<n>` prints, tries to refute each new id; a refuted one is dropped before the walk, with the evidence that refuted it.
 
 **When this session wrote, planned or discussed the change, steps 1–4 run in one fresh agent.**
 Why: an author reads the diff through what it meant the code to do, and an author refuting its own findings clears its own work; a review that came back clean that way proves nothing.

@@ -133,7 +133,7 @@ Each stage is one of the plugin's agents, dispatched fresh; the agent's file hol
 | check | `sdlc:checker` | the ticket key, the branch and the commit the ticket started from — never the builder's report |
 | rules | `sdlc:rules` | the base and the branch; skipped when no `.claude/rules/*.md` matches a changed file |
 | security | `sdlc:security` | the base, the branch and the output of `/security-review`, which the session runs on the branch first; only when the checker says `security: yes` |
-| verify | `sdlc:verifier` | the base, the branch and the findings by id |
+| verify | `sdlc:verifier` | the base, the branch and the findings by id, as `ledger.mts still-open` prints them: the hook numbers them in the order the agents finish |
 | fix | `sdlc:fixer` | what `ledger.mts round` printed — the node, the round and its open findings by id — then the worktree and base |
 
 For the first ticket the session creates the worktree with its branch cut from the freshly fetched base, or continued from the branch when one exists locally or on origin; every later ticket of a batch works in the same worktree, on the commits its predecessors left.
