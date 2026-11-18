@@ -29,6 +29,12 @@ describe('the ledger', () => {
     expect(ledger.open().map((f) => f.id)).toEqual(['F3']);
   });
 
+  test('a walk failure located by a screen and a step with spaces is a finding', () => {
+    const ledger = start(folder(), '12');
+    const { added } = ledger.record('walk', '- [high] /settings:step 2: pressing Save leaves the old value');
+    expect(added.map((f) => [f.where, f.what])).toEqual([['/settings:step 2', 'pressing Save leaves the old value']]);
+  });
+
   test('a finding reported again while still open keeps its id', () => {
     const ledger = start(folder(), '12');
     ledger.record('check', '- [high] a.rb:1: one');

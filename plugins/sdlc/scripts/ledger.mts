@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 export const RUNS = path.join('.sdlc', 'runs');
 export const MAX_FIX_ROUNDS = 3;
-const FINDING = /^\s*-\s*\[(high|medium|low)\]\s+(\S+):\s+(.+?)\s*$/i;
+const FINDING = /^\s*-\s*\[(high|medium|low)\]\s+(.+?):\s+(.+?)\s*$/i;
 const ANSWER = /^\s*-?\s*(F\d+):\s*(fixed|open|holds|refuted)\b/i;
 
 export type Event = { at: string; event: string } & Record<string, any>;
