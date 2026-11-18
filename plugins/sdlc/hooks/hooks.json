@@ -1,5 +1,5 @@
 {
-  "description": "The findings ledger's rules: fix rounds converge or stop, the checker and verifier run on opus, no agent pushes or merges, checking agents' reports are recorded, an open ledger survives a compaction and holds the turn. Node starts only below a folder holding .sdlc/runs.",
+  "description": "The findings ledger's rules: fix rounds converge or stop, the checker and verifier run on opus, no agent pushes or merges, checking agents' reports are recorded, an open ledger survives a compaction and holds a turn's end once. Node starts only below a folder holding .sdlc/runs.",
   "hooks": {
     "PreToolUse": [
       {

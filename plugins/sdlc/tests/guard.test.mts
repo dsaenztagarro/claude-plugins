@@ -1,7 +1,7 @@
 // The hook behind the findings ledger. Contract: inside a session that owns
 // an open ledger, fix rounds converge or stop, the checker and the verifier
-// run on opus, no plugin agent pushes or merges, and the turn does not end
-// until every open finding is fixed or listed under Still open. Every other
+// run on opus, no plugin agent pushes or merges, and a turn ending before
+// every open finding is fixed or listed under Still open is held once. Every other
 // session passes untouched. Without it, a session that compacted mid-loop
 // forgot the cap and ran a fourth round on the model that failed three.
 import fs from 'node:fs';
@@ -194,6 +194,11 @@ describe('stopping', () => {
   test('an open ledger holds the turn, naming its open findings', () => {
     const cwd = owned();
     expect(reason(decide(stop(cwd)))).toMatch(/12: F1 F2 open/);
+  });
+
+  test('a turn held once may end when the session stops again, so it can wait for an agent or a check', () => {
+    const cwd = owned();
+    expect(decide({ ...stop(cwd), stop_hook_active: true })).toBeNull();
   });
 
   test('a closed or abandoned ledger lets the turn end', () => {

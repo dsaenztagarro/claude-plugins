@@ -48,7 +48,7 @@ Every stage that judges a change is a plugin agent whose file fixes its tools an
 Every checking agent writes a finding as `- [high|medium|low] <file>:<line>: <what>`; a verifier refutes each before any fix spends work on it, as Anthropic's own review plugins do; and a path-scoped rules agent holds each changed file to the `.claude/rules/` that match it, since a rule loads only when a matching file is read.
 
 A findings ledger numbers each finding, records a recheck's answer by id, and counts fix rounds per node.
-Its hooks hold, in the session that started a ledger only: three rounds per node, none after a round that fixed nothing, the third on opus; no plugin agent pushes or merges; the turn does not end while a ledger is open.
+Its hooks hold, in the session that started a ledger only: three rounds per node, none after a round that fixed nothing, the third on opus; no plugin agent pushes or merges; a turn ending while a ledger is open is held once, since holding every stop would block each wait for an agent or a check.
 They also record each checking agent's report as it finishes, so a session that forgets to record one loses no finding, and carry each open ledger's next step through a compaction.
 Why hooks rather than skill text: a session that compacts mid-loop keeps "fixing review findings" and drops the round count, and the next round then runs past the cap on the model that already failed; the ledger on disk survives that, and a hook refuses the round.
 A session below no `.sdlc/runs` folder never starts Node, so a project that never builds through the plugin pays nothing.

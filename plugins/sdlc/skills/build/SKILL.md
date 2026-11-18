@@ -163,7 +163,7 @@ Why: a recheck that re-reviews from scratch cannot tell a finding still open fro
 - `round` refuses a fourth round and a round after one that fixed none of the node's findings; the hook refuses a fixer with no round open, a third round not on opus, and the checker or the verifier on any model but opus. When either refuses, carry on: the findings go under Still open.
 - `ledger.mts next <ticket>` says what is due, for a session that lost its place.
 - A finding never holds the pull request. A security finding is never left open for cost: it goes to the user.
-- The session cannot end its turn while a ledger is open. Close it once Still open names every open id, or `ledger.mts abandon <ticket> "<why>"` when the user stops the run or it is blocked on them.
+- A turn that ends while a ledger is open is held once, with what is due; ending it again waits, for an agent or a check, with the ledger kept. Close it once Still open names every open id, or `ledger.mts abandon <ticket> "<why>"` when the user stops the run or it is blocked on them.
 
 ### Gate and pull request, in the session
 

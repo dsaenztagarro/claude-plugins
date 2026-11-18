@@ -11,8 +11,10 @@
 //   which it refuses past three per node or after a round that fixed nothing;
 //   the third round, the checker and the verifier run on opus.
 // - PreToolUse on Bash: none of the plugin's agents pushes or merges.
-// - Stop: the turn does not end while a ledger is open; closing it needs every
-//   open finding named under Still open.
+// - Stop: a turn ending while a ledger is open is held once, with what is due,
+//   and ends when the session stops again: holding every stop would block each
+//   wait for a background agent or a check until the session abandoned the
+//   ledger. Closing it needs every open finding named under Still open.
 // - SubagentStop: a checking agent's report is recorded in the ledger, so a
 //   session that forgets `ledger.mts node` loses no finding and no answer.
 // - PreCompact and SessionStart after a compaction or a resume: each open
@@ -79,6 +81,7 @@ function stop(ledgers: Ledger[]): Decision {
       : `- ${l.key}: ${l.next()}`;
   });
   return block(`A findings ledger is still open:\n${lines.join('\n')}\n`
+    + 'If you are waiting for an agent or a check, end the turn again and keep the ledger open. '
     + 'If the user asked to stop, or the run is blocked on something only they can clear, `ledger.mts abandon <key> "<why>"`.');
 }
 
@@ -130,7 +133,7 @@ export function decide(event: HookEvent): Decision {
   if (!ledgers.length) return null;
   if (event.hook_event_name === 'PreToolUse' && event.tool_name === 'Agent') return dispatch(event, ledgers);
   if (event.hook_event_name === 'PreToolUse' && event.tool_name === 'Bash') return bash(event);
-  if (event.hook_event_name === 'Stop') return stop(ledgers);
+  if (event.hook_event_name === 'Stop') return event.stop_hook_active ? null : stop(ledgers);
   if (event.hook_event_name === 'SubagentStop') return subagentStop(event, ledgers);
   if (event.hook_event_name === 'PreCompact') {
     return `Keep in the summary, word for word, that a findings ledger is open and what is due next:\n${nextSteps(ledgers)}`;
