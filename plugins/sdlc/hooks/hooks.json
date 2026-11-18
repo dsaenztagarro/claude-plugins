@@ -1,0 +1,22 @@
+{
+  "description": "The findings ledger's rules: fix rounds converge or stop, the checker and verifier run on opus, no agent pushes or merges, and an open ledger holds the turn. Node starts only below a folder holding .sdlc/runs.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Agent|Bash",
+        "hooks": [{ "type": "command", "command": "d=$PWD; while [ -n \"$d\" ]; do [ -d \"$d/.sdlc/runs\" ] && exec node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mts\"; d=${d%/*}; done", "timeout": 10 }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "if": "Bash(*ledger.mts start*)", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mts\"", "timeout": 10 }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": "d=$PWD; while [ -n \"$d\" ]; do [ -d \"$d/.sdlc/runs\" ] && exec node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mts\"; d=${d%/*}; done", "timeout": 10 }]
+      }
+    ]
+  }
+}

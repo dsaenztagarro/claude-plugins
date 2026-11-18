@@ -8,8 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 The kit installs as two Claude Code plugins from this repository's marketplace, once per machine, with one copy of each skill.
 
+### Added
+
+- **`sdlc` ships its agents:** builder, checker, rules, verifier, security, fixer and walker, each with its own tools and model. The checker and the verifier run on opus, a different model from the agents whose work they check.
+- **A rules agent holds each changed file to the path-scoped rules that match it**, clause by clause, in `/sdlc:build` and `/sdlc:review`, and flags a clause a test could enforce but none does.
+- **A verifier refutes each finding before a fix round spends work on it.**
+- **Fix rounds converge or stop.** A findings ledger gives every finding an id, a recheck answers each by id, and the plugin's hooks refuse a fourth round, a round after one that fixed nothing, a third round not on opus, and any push or merge by a plugin agent; the session cannot end its turn while a ledger is open. What is left goes under Still open in the pull request. Needs Node 22.18 or later.
+
 ### Changed
 
+- **`/sdlc:build` fixes through a fresh fixer per round, and `/sdlc:review` caps rounds at three per node** instead of two and four, both stopping as soon as a round fixes nothing. `/sdlc:review` fixes only threads from the repository's own members; any other is listed for the user.
 - **The design skills and agents ship as the `ds` plugin**, installed with `claude plugin install ds@agent-sdlc`. They were an APM package deployed into each project, so every project carried its own copy. The namespace replaces the `design` in their names: `/ds:handoff`, `/ds:adopt`, `/ds:repo`, `/ds:adopt-shared-release` and the `curator` agent. The plugin is not named `design`, which Anthropic's knowledge-work marketplace already uses for a plugin with its own `design-handoff` skill. `figma` joins them, reading its token from `FIGMA_TOKEN` and its script through the skill's own directory.
 - **`/sdlc:build`'s design gate stops when a project with a design section lacks the `ds` plugin**, naming the install command, rather than reaching for another plugin's skill of a similar name.
 - **Each plugin has its own README** listing its skills and agents; the root README indexes the plugins and keeps the template.
