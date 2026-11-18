@@ -37,6 +37,16 @@ describe('the ledger', () => {
     expect(ledger.open().map((f) => f.id)).toEqual(['F1']);
   });
 
+  test('a refuted or accepted finding reported again keeps its id and stays out of the rounds', () => {
+    const ledger = start(folder(), '12');
+    ledger.record('check', '- [high] a.rb:1: one\n- [high] a.rb:2: two');
+    ledger.record('verify', 'F1: refuted');
+    ledger.accept('F2', 'speculative');
+    const { added } = ledger.record('check', '- [high] a.rb:1: one\n- [high] a.rb:2: two');
+    expect(added).toEqual([]);
+    expect(ledger.open()).toEqual([]);
+  });
+
   test('ids keep counting across nodes', () => {
     const ledger = start(folder(), '12');
     ledger.record('check', '- [high] a.rb:1: one');

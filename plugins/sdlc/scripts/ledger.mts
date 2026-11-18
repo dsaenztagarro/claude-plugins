@@ -70,6 +70,12 @@ export class Ledger {
     }));
   }
 
+  /** The node's findings refuted or accepted: one reported again keeps its id instead of reopening. */
+  dismissed(node: string): Finding[] {
+    const refuted = new Set(this.of('answer').filter((e) => e.verdict === 'refuted').map((e) => e.id));
+    return this.findings().filter((f) => f.node === node && (refuted.has(f.id) || f.accepted !== undefined));
+  }
+
   accepted(): Finding[] {
     return this.findings().filter((f) => f.accepted !== undefined);
   }
@@ -110,7 +116,7 @@ export class Ledger {
       const m = FINDING.exec(line);
       if (!m) continue;
       const [, severity, where, what] = m as unknown as [string, string, string, string];
-      if ([...this.open(node), ...added].some((f) => f.where === where && f.what === what)) continue;
+      if ([...this.open(node), ...this.dismissed(node), ...added].some((f) => f.where === where && f.what === what)) continue;
       const id = `F${++count}`;
       this.append('finding', { id, node, severity: severity.toLowerCase(), where, what });
       added.push({ id, node, severity: severity.toLowerCase(), where, what, open: true });
