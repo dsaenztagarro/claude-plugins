@@ -7,7 +7,9 @@
 //
 // A checking agent writes each finding on a line of its own,
 // `- [high|medium|low] <file>:<line>: <what>`; a recheck or the verifier
-// answers an open one by its id, `F<n>: fixed|open|holds|refuted`.
+// answers an open one by its id, `F<n>: fixed|open|holds|refuted`. Only the
+// session accepts one, leaving it unfixed: it leaves the rounds and stays under
+// Still open with its reason.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -19,7 +21,7 @@ const FINDING = /^\s*-\s*\[(high|medium|low)\]\s+(\S+):\s+(.+?)\s*$/i;
 const ANSWER = /^\s*-?\s*(F\d+):\s*(fixed|open|holds|refuted)\b/i;
 
 export type Event = { at: string; event: string } & Record<string, any>;
-export interface Finding { id: string; node: string; severity: string; where: string; what: string; open: boolean }
+export interface Finding { id: string; node: string; severity: string; where: string; what: string; open: boolean; accepted?: string }
 
 export class Ledger {
   readonly folder: string;
@@ -61,9 +63,28 @@ export class Ledger {
 
   findings(): Finding[] {
     const closed = new Set(this.of('answer').filter((e) => e.verdict === 'fixed' || e.verdict === 'refuted').map((e) => e.id));
+    const accepted = new Map(this.of('accepted').map((e) => [e.id, e.why as string]));
     return this.of('finding').map((e) => ({
-      id: e.id, node: e.node, severity: e.severity, where: e.where, what: e.what, open: !closed.has(e.id),
+      id: e.id, node: e.node, severity: e.severity, where: e.where, what: e.what,
+      open: !closed.has(e.id) && !accepted.has(e.id), ...(accepted.has(e.id) ? { accepted: accepted.get(e.id) } : {}),
     }));
+  }
+
+  accepted(): Finding[] {
+    return this.findings().filter((f) => f.accepted !== undefined);
+  }
+
+  /** Leave an open finding unfixed, for a reason the user can overrule; false when it is not open. */
+  accept(id: string, why: string): boolean {
+    if (!this.open().some((f) => f.id === id)) return false;
+    this.append('accepted', { id, why });
+    return true;
+  }
+
+  /** The pull request body's Still open: the open findings, then the accepted ones with their reason. */
+  stillOpen(): string {
+    const lines = [...this.open(), ...this.accepted()].map(stillOpenLine);
+    return lines.length ? lines.join('\n') : 'No finding is open.';
   }
 
   open(node?: string): Finding[] {
@@ -160,13 +181,14 @@ export class Ledger {
 
   /** Close the ledger once every open finding is named in the Still open text; returns the ids missing from it. */
   close(stillOpen: string): string[] {
-    const missing = this.open().filter((f) => !new RegExp(`\\b${f.id}\\b`).test(stillOpen)).map((f) => f.id);
+    const missing = [...this.open(), ...this.accepted()].filter((f) => !new RegExp(`\\b${f.id}\\b`).test(stillOpen)).map((f) => f.id);
     if (!missing.length) this.append('closed');
     return missing;
   }
 }
 
-export const stillOpenLine = (f: Finding) => `- ${f.id} [${f.severity}] ${f.node}: ${f.where}: ${f.what}`;
+export const stillOpenLine = (f: Finding) =>
+  `- ${f.id} [${f.severity}] ${f.node}: ${f.where}: ${f.what}${f.accepted === undefined ? '' : ` — accepted: ${f.accepted}`}`;
 
 /** The nearest folder at or above cwd that holds `.sdlc/runs`, or null. */
 export function root(cwd: string): string | null {
@@ -209,7 +231,7 @@ export function forSession(cwd: string, session: string | undefined): Ledger[] {
     .filter((ledger) => ledger.active() && ledger.owner() === session);
 }
 
-const USAGE = 'usage: ledger.mts start <key> | node <key> <node> <output-file> | round <key> <node> | next <key> | still-open <key> | close <key> [<still-open-file>] | abandon <key> <why>\n';
+const USAGE = 'usage: ledger.mts start <key> | node <key> <node> <output-file> | round <key> <node> | next <key> | still-open <key> | accept <key> <id> <why> | close <key> [<still-open-file>] | abandon <key> <why>\n';
 
 export function main(argv: string[], cwd = process.cwd()): number {
   const [command, key, ...rest] = argv;
@@ -251,9 +273,17 @@ export function main(argv: string[], cwd = process.cwd()): number {
     case 'next':
       out(ledger.next());
       return 0;
-    case 'still-open': {
-      const open = ledger.open();
-      out(open.length ? open.map(stillOpenLine).join('\n') : 'No finding is open.');
+    case 'still-open':
+      out(ledger.stillOpen());
+      return 0;
+    case 'accept': {
+      const [id, ...why] = rest;
+      if (!id || !why.length) break;
+      if (!ledger.accept(id.toUpperCase(), why.join(' '))) {
+        process.stderr.write(`${id} is not an open finding of ledger ${key}\n`);
+        return 1;
+      }
+      out(`${id.toUpperCase()} accepted; it stays under Still open.`);
       return 0;
     }
     case 'close': {

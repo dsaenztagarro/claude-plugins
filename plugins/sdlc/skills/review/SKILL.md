@@ -83,7 +83,7 @@ Each finding gets two marks, and the pair decides what happens to it.
 | **Costly** | fix it | an accepted edge case: not fixed, with what would make it real |
 
 - A finding that already existed on the base branch is reported, not fixed, whatever its marks: the PR finishes its own change.
-- An accepted edge case is not posted as a finding, not fixed and not ticketed, and is not raised again in a later round. The summary names it in one line, with what would make it real, so the user can overrule; then it goes through `/sdlc:amend`.
+- An accepted edge case is not posted as a finding, not fixed and not ticketed, and is not raised again in a later round. `ledger.mts accept pr-<n> <id> "<what would make it real>"` takes it out of the fix rounds and keeps it under Still open. The summary names it in one line, with what would make it real, so the user can overrule; then it goes through `/sdlc:amend`.
 - When a fix grows past what its marks promised, stop, revert it, and mark the finding costly.
 
 ## 5. Rounds: findings converge or stop

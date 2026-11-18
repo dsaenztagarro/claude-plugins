@@ -44,6 +44,15 @@ describe('the ledger', () => {
     expect(added[0]!.id).toBe('F2');
   });
 
+  test('an accepted finding leaves the fix rounds and stays under Still open with its reason', () => {
+    const ledger = start(folder(), '12');
+    ledger.record('review', '- [high] a.rb:1: one\n- [low] a.rb:2: could race');
+    ledger.accept('F2', 'no walk reaches the race');
+    const round = ledger.openRound('review');
+    expect('brief' in round && round.brief).not.toMatch(/F2/);
+    expect(ledger.stillOpen()).toMatch(/F2 .*could race — accepted: no walk reaches the race/);
+  });
+
   test('a ledger closes only when every open finding is named under Still open', () => {
     const ledger = start(folder(), '12');
     ledger.record('check', '- [high] a.rb:1: one\n- [high] a.rb:2: two');
