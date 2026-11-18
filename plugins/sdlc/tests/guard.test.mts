@@ -79,6 +79,15 @@ describe('fix rounds', () => {
     expect(reason(decide(fixer(cwd)))).toMatch(/ledger\.mts round/);
   });
 
+  test('a round whose findings all close before its fixer is withdrawn', () => {
+    const cwd = owned();
+    ledger(cwd).record('rules', '- [low] a.js:4: builds markup (stimulus.md)');
+    expect(refused(cwd)).toBeNull();
+    ledger(cwd).record('verify', 'F1: refuted\nF2: refuted');
+    expect(refused(cwd, 'rules')).toBeNull();
+    expect(ledger(cwd).rounds('check')).toBe(0);
+  });
+
   test('a round opens only for a node with open findings, one round at a time', () => {
     const cwd = owned();
     expect(refused(cwd, 'walk')).toMatch(/nothing to fix/);

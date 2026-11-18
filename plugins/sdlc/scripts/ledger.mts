@@ -122,10 +122,10 @@ export class Ledger {
     return this.of('fix-round').filter((e) => e.node === node).length;
   }
 
-  /** The round `round` opened that no fixer has taken yet, or null. */
+  /** The round `round` opened that no fixer has taken yet, or null; withdrawn once its node has nothing open. */
   pending(): Event | null {
     const last = this.events.findLast((e) => e.event === 'round-pending' || e.event === 'fix-round');
-    return last?.event === 'round-pending' ? last : null;
+    return last?.event === 'round-pending' && this.open(last.node).length ? last : null;
   }
 
   /** Why the node may not have another fix round, or null when it may. */
