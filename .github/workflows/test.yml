@@ -1,0 +1,21 @@
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  sdlc-plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.18'
+      - run: npm --prefix plugins/sdlc/dev ci
+      - run: npm --prefix plugins/sdlc/dev test
+      - run: npm --prefix plugins/sdlc/dev run typecheck

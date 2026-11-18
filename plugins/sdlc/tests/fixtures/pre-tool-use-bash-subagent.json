@@ -1,0 +1,19 @@
+{
+  "session_id": "304eecc4-8d75-4aaa-9399-5c3ee6e40a15",
+  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-Work-hive/304eecc4-8d75-4aaa-9399-5c3ee6e40a15.jsonl",
+  "cwd": "/Users/dev/Work/hive",
+  "prompt_id": "dec732e3-fb2f-41dc-a6f7-c6d4c4a46373",
+  "permission_mode": "default",
+  "agent_id": "af67f1212c1e93853",
+  "agent_type": "general-purpose",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "echo from-subagent",
+    "description": "Echo the from-subagent string"
+  },
+  "tool_use_id": "toolu_016QdQbSqAHQJ41qoR5t9WqS"
+}

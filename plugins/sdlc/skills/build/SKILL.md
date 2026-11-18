@@ -17,7 +17,6 @@ Why: a model misses most of the errors in its own output that it catches in some
 
 A ticket has one writer and stages in a fixed order, two of them stopped by a person answering.
 A workflow pays for parallel writers, their integration and replay of unchanged agent calls; a ticket uses none of them, and a run that has to wait for a person splits into several runs anyway.
-Plain subagents also let the session hand the check's findings back to the builder that still holds the context.
 
 An epic is built the same way, one ticket after another.
 Parallel writers buy wall-clock only, and pay for it in accuracy: tickets started together cannot see each other's code, so they make conflicting choices that need an alignment pass before and a coherence review after, and their branches need integrating.
@@ -26,8 +25,8 @@ No path builds tickets in parallel: an epic that ever needs one for wall-clock g
 
 ## What it costs
 
-A ticket: about seven subagents — clarify, design gate, builder, checker, re-check, security when it runs, acceptance walk — plus what `/sdlc:review` runs.
-An epic: one clarify and one design gate for the whole batch, then a builder, a checker and a re-check per ticket, and one review and one walk for the batch's pull request.
+A ticket: about ten subagents — clarify, design gate, builder, checker, rules when a rule matches, verifier, a fixer and a recheck per fix round, security when it runs, acceptance walk — plus what `/sdlc:review` runs.
+An epic: one clarify and one design gate for the whole batch, then a builder, a checker, a rules agent, a verifier and the fix rounds per ticket, and one review and one walk for the batch's pull request.
 Say so when the run starts.
 
 Every agent starts fresh with a brief, and returns a short digest; what it learns goes to the tracker or the commits.
@@ -124,53 +123,60 @@ After a ticket's gate passes, the session posts a `BUILT:` comment on it — its
 When a builder reports that the code makes a later ticket's line wrong, the session posts a `QA:` comment on that ticket, which its builder reads; it never edits the later ticket's description during the run.
 A ticket that still fails its gate after the fix rounds stops the batch: the tickets after it would build on a red branch. The pull request opens with what passed, and the report names where it stopped.
 
-### The builder
+### The agents
 
-One `general-purpose` agent working in the run's worktree: for the first ticket the session creates it with its branch cut from the freshly fetched base, or continued from the branch when one exists locally or on origin; every later ticket of a batch works in the same worktree, on the commits its predecessors left.
-Its brief carries the ticket key, the base, the tickets already built on the branch, the `DESIGN:` comment's pages and parked lines, any decision to record, and these instructions:
+Each stage is one of the plugin's agents, dispatched fresh; the agent's file holds its constraints, its tools and its model, and the brief holds only the task.
 
-- **Before writing or editing a file, read every `.claude/rules/*.md` whose `paths:` matches it, and the skill `AGENTS.md`'s routing table names for that kind of work, and follow them.** A path-scoped rule loads when a matching file is read, and a builder that creates a file without reading a neighbour never sees it.
-- Read the ticket and its comments, including every `QA:` note: apply each or state why not.
-- Write the tests the Tests section names, by those names; see them fail; implement; mutation-check the ones the ticket names.
-- Amend the theme's decision record for a decision that clears the bar.
-- Run the focused checks — the formatter, linter and type check on the changed files and the tests that cover them — and commit in the repository's style. Not the full gate: the session runs it once.
-- Leave the parked lines alone, and name a line that depends on an unbuilt ticket as blocked, never faked.
-- Final message: what was built in three sentences, the focused checks in one line, and the blocked lines.
+| stage | agent | brief |
+|---|---|---|
+| build | `sdlc:builder` | the ticket key, the worktree and base, the tickets already built on the branch, the `DESIGN:` pages and parked lines, any decision to record |
+| check | `sdlc:checker` | the ticket key, the branch and the commit the ticket started from — never the builder's report |
+| rules | `sdlc:rules` | the base and the branch; skipped when no `.claude/rules/*.md` matches a changed file |
+| security | `sdlc:security` | the base, the branch and the output of `/security-review`, which the session runs on the branch first; only when the checker says `security: yes` |
+| verify | `sdlc:verifier` | the base, the branch and the findings by id, as `ledger.mts still-open` prints them: the hook numbers them in the order the agents finish |
+| fix | `sdlc:fixer` | what `ledger.mts round` printed — the node, the round and its open findings by id — then the worktree and base |
 
-### The checker
+For the first ticket the session creates the worktree with its branch cut from the freshly fetched base, or continued from the branch when one exists locally or on origin; every later ticket of a batch works in the same worktree, on the commits its predecessors left.
+The checker and the rules agent start together after the builder; both are read-only.
 
-One fresh agent, read-only, given the ticket key, the branch and the commit the ticket started from — never the builder's report.
+### Findings converge or stop
 
-- Review the ticket's own commits (`git log -p <start>..HEAD`) adversarially, reading the earlier tickets' code only where this one depends on it: the project's conventions; tests that state rules and go red when the code they cover breaks — one mutation check on the changed lines, then restore and confirm `git status` is clean; nothing faked that should be real.
-- **Hold each changed file to every rule whose `paths:` matches it**, quoting a broken rule with its file and line.
-- Mark every done-when line: **done** with a named passing test or real output, **blocked** with the ticket it waits on, **missing** when buildable and not built or not proven.
-- Return the problems, each with file, line and fix; the lines; and `security: yes` when the diff touches authentication or authorisation, input that reaches a query, shell, template or deserialiser, secrets or configuration, or dependencies.
+Every checking agent writes each finding as `- [high|medium|low] <file>:<line>: <what>`. The plugin's ledger gives each an id and counts fix rounds per node; its hooks hold the rules below in the session that started it, so they survive a compaction.
+Why: a recheck that re-reviews from scratch cannot tell a finding still open from a new one, so nothing shows whether the loop converges.
 
-### The security reviewer, only on `security: yes`
+```
+ ledger.mts start <ticket>
+ checker + rules (+ security)  -> recorded by the hook as they finish     F1 F2 F3
+ verifier on the new ids       -> recorded by the hook                  F2: refuted
+ ledger.mts round <ticket> <node> -> opens the round, prints F1 F3
+ fixer with that brief         -> one commit per finding
+ recheck by that node's agent  -> F1: fixed  F3: open  (answers before anything new)
+ ...at most 3 rounds per node, the third on opus
+ ledger.mts still-open <ticket> -> the pull request body's "## Still open"
+ ledger.mts close <ticket> <body-file>
+```
 
-One fresh agent, read-only, started beside the checker's re-check.
-
-- Run the static analysis and dependency audit the project's `AGENTS.md` names, and triage their output on the changed lines. Where it names none, say so and skip to judgment.
-- Judge what tools cannot: who may reach each changed path, and what crosses each trust boundary the diff touches.
-- Leave out what reviews of this kind report falsely far more often than truly: denial of service, rate limiting, input validation with no demonstrated impact, open redirects.
-- Return each finding with file, line, the attack in one sentence and the fix.
-
-Why a tool first: a scanner's recall and precision are measured, an agent's are not, and an agent triaging a scanner's output removes most of its false positives.
-
-### Fix, at most twice
-
-The session hands the checker's and the security reviewer's findings to **the same builder** with `SendMessage`; it fixes each with a test that fails first, and commits.
-A fresh checker then re-checks the ticket's commits, fixes included.
-After the second round, what is left goes into the pull request body as open, never into a third round: a check that still finds defects after one fix rarely converges on the next.
-A security finding is never left open for cost: it goes to the user.
+- `ledger.mts` is `node ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mts`; it needs Node 22.18 or later. Start the ledger in the folder the session runs in, before the builder, and put the run's worktree below that folder: the hooks find the ledger by walking up from where each tool call runs, so a worktree beside the repository leaves a fixer's push and the session's turn unguarded.
+- The plugin's checking agents — checker, rules, security, verifier, walker — are recorded by a hook when each finishes, recheck answers included. Any other reviewer's output, such as a fresh review agent or `/code-review`, is recorded by the session: written to a file in the finding format and passed to `ledger.mts node <ticket> <node> <file>`. An answer not recorded is a round that fixed nothing.
+- The ledger survives a compaction: the hook writes each open ledger's next step into the summary and into the context of the session that follows.
+- Only findings that **hold** go to a fixer. Each round is opened by `ledger.mts round <ticket> <node>`, one at a time, and taken by one fixer with all of that node's open ids. A finding left unfixed by decision, the user's or the review's triage, is taken out first with `ledger.mts accept <ticket> <id> "<why>"`; it stays under Still open with its reason.
+- `round` refuses a fourth round and a round after one that fixed none of the node's findings; the hook refuses a fixer with no round open, a third round not on opus, and the checker or the verifier on any model but opus. When either refuses, carry on: the findings go under Still open.
+- `ledger.mts next <ticket>` says what is due, for a session that lost its place.
+- A finding never holds the pull request. A security finding is never left open for cost: it goes to the user.
+- A turn that ends while a ledger is open is held once, with what is due; ending it again waits, for an agent or a check, with the ledger kept. Close it once Still open names every open id, or `ledger.mts abandon <ticket> "<why>"` when the user stops the run or it is blocked on them.
 
 ### Gate and pull request, in the session
 
 - Run the full gate in the worktree after each ticket, and quote its output: a red gate found one ticket later is blamed on the wrong ticket.
 - Once every ticket of the run is built, push with `/sdlc:git-push`.
-- Open one pull request: `## Sequence` first — the ticket or the epic, the previous pull request, the next; a Conventional Commit title; a body that compares with the base branch, says what each ticket does, carries the gate's output and the mutation checks, and lists open problems and parked lines.
+- Open one pull request: `## Sequence` first — the ticket or the epic, the previous pull request, the next; a Conventional Commit title; a body that compares with the base branch, says what each ticket does, carries the gate's output and the mutation checks, lists parked lines, and holds `## Still open` from the ledger. Then close the ledger.
 - `Closes #N` for each ticket with nothing parked; otherwise `Part of #N`. An epic is never closed by the pull request.
+- Wait for CI with the Monitor tool on `gh pr checks <n> --watch` (or the forge's equivalent), never by polling, and quote its result in the report. A run that outlasts Monitor's deadline is reported as unfinished, never as green.
 - Never merge: a person does.
+
+### When the run needs the user
+
+Send a `PushNotification` whenever the run stops on the user — clarify questions, a security finding, a hook refusal that leaves something only they can decide — and when the pull request is ready to merge, so a run left alone does not wait unseen. It reaches the user only when they turned notifications on in `/config`; the question itself is still asked in the session.
 
 ## 5. Review
 
@@ -179,17 +185,11 @@ This session orchestrated the build, so that skill's rule for a session that wro
 
 ## 6. The acceptance walk
 
-One fresh agent, with the Claude in Chrome tools, or for a product with no browser, its CLI or API driven as its user drives it.
-Its brief carries the ticket keys, the pull request, the branch and the project's run command — no account of the change, which would hand it the builder's reading.
+One `sdlc:walker`, whose brief carries the ticket keys, the pull request, the branch and the project's run command — no account of the change, which would hand it the builder's reading.
 An epic's batch gets one walk over all its tickets, on the finished branch: a walk per ticket would retread the same screens, and would miss what a later ticket broke in an earlier one.
 
-- Derive one scenario per done-when line that is not parked, one per human acceptance step, and one per end-to-end scenario in the Tests section.
-- Run the application from the pull request's branch and walk each scenario through the product's own screens, with data a real user would plausibly have; a state seeded behind the product's back proves nothing.
-- Record a GIF per scenario; read the console's errors and the failed network requests on every page; where the page allows a script, run axe on it.
-- Return, per line: **pass**, **fail** with what the user meets, or **blocked** with its ticket, each with its evidence.
-
 The session writes the result into the pull request body between `<!-- acceptance-walk:start -->` and `<!-- acceptance-walk:end -->`, with the head commit it walked.
-A failure goes through one `/sdlc:review` fix round and one more walk; one still failing is reported to the user, not looped on.
+A failure is a finding of node `walk`, in a ledger the session starts for the walk: it gets the fix rounds above, each followed by a re-walk, and one still failing goes under Still open for the user.
 
 ## 7. Report
 

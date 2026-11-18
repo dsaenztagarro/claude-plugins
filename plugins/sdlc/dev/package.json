@@ -1,0 +1,16 @@
+{
+  "name": "sdlc-plugin-dev",
+  "private": true,
+  "description": "What the plugin's tests and type check need; the plugin itself has no dependencies.",
+  "type": "module",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.3",
+    "typescript": "5.9.3",
+    "vitest": "4.1.12"
+  }
+}

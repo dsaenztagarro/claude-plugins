@@ -25,6 +25,7 @@ Before writing the note, check each of these and tell the user:
 - **A conclusion that belongs in the ticket itself,** such as a corrected done-when line or a changed verification step. That is an amendment, made now and confirmed first. A pause note is not a place for rules.
 - **A conclusion that belongs in a decision record or a test.** Name it as the next action, rather than parking it in prose.
 - **The gate.** Note whether the project's hooks are installed on this machine (`git rev-parse --git-path hooks/pre-push` names a file that exists); a resume on another machine checks the same.
+- **An open findings ledger.** `ledger.mts next <key>` for each one `/sdlc:build` or `/sdlc:review` started: the ledger lives on this machine's disk, so its open ids and rounds go into the note. Then abandon it with the pause as the reason, since the session that owns it is ending.
 
 ## 3. Secure the runs in flight
 
@@ -49,6 +50,7 @@ _Paused YYYY-MM-DD · branch `name` · last commit `abc1234`_
 - **Gate:** hooks installed here, or which are missing.
 - **Learned, not yet recorded:** facts found this session that no ticket, commit or record holds yet.
 - **Open questions:** each with who has to answer it.
+- **Findings:** only when a ledger was open. Per node, its rounds spent and the open ids, from `ledger.mts next` and `still-open`.
 - **Runs:** only when step 3 ran. One line per run:
   `<what> · branch <b> · PR #P or none · <stage reached> · relaunch: <workflow name or script path> args=<json>`.
   Add one line listing the ticket branches pushed but not yet integrated.

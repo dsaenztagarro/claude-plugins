@@ -1,0 +1,26 @@
+{
+  "session_id": "31b570b5-ac9d-40ed-aecf-679e68a948c9",
+  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-project/31b570b5-ac9d-40ed-aecf-679e68a948c9.jsonl",
+  "cwd": "/Users/dev/project",
+  "prompt_id": "f1d553d6-b369-4375-a8d5-fd40daf3f87f",
+  "permission_mode": "default",
+  "agent_id": "af23b99d80889f743",
+  "agent_type": "sdlc:rules",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "SubagentStop",
+  "stop_hook_active": false,
+  "agent_transcript_path": "/Users/dev/.claude/projects/-Users-dev-project/31b570b5-ac9d-40ed-aecf-679e68a948c9/subagents/agent-af23b99d80889f743.jsonl",
+  "last_assistant_message": "- [low] a.rb:1: probe finding\nF9: fixed",
+  "background_tasks": [
+    {
+      "id": "af23b99d80889f743",
+      "type": "subagent",
+      "status": "running",
+      "description": "probe",
+      "agent_type": "sdlc:rules"
+    }
+  ],
+  "session_crons": []
+}

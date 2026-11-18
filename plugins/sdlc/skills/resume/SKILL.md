@@ -60,6 +60,7 @@ Lead with the pause, because it is what the user came for:
 - **Open questions** the note carries, and who answers each.
 - **Changed since:** the differences from step 2, if any.
 - **Runs:** one line per paused run with its class from step 2a, and the relaunches awaiting the user's go-ahead.
+- **Findings:** the note's open ids and rounds spent. A resumed build or review runs `ledger.mts start` with the same key: on the machine that paused it, that reopens the ledger with its findings and rounds; on another, it starts empty, a recheck records the findings still open before any fix round, and a node the note shows at its cap goes straight under Still open.
 
 Then the project:
 
