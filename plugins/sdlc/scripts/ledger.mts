@@ -46,8 +46,9 @@ export class Ledger {
     return entry;
   }
 
+  /** Open until closed or abandoned; starting it again reopens it, with its findings and rounds. */
   active(): boolean {
-    return !this.of('closed').length && !this.of('abandoned').length;
+    return this.events.findLast((e) => ['start', 'closed', 'abandoned'].includes(e.event))?.event === 'start';
   }
 
   owner(): string | null {

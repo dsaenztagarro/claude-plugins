@@ -180,6 +180,15 @@ describe('stopping', () => {
     expect(decide(stop(abandoned))).toBeNull();
   });
 
+  test('a ledger abandoned to ask the user holds again once it is started again, with its rounds counted', () => {
+    const cwd = owned();
+    expect(fixRound(cwd)).toBeNull();
+    ledger(cwd).append('abandoned', { why: 'a security finding goes to the user' });
+    start(cwd, '12');
+    expect(reason(decide(stop(cwd)))).toMatch(/12: F1 F2 open/);
+    expect(ledger(cwd).rounds('check')).toBe(1);
+  });
+
   test('another session in the same folder is never held by it', () => {
     const cwd = owned();
     expect(decide({ ...stop(cwd), session_id: 'someone-else' })).toBeNull();
