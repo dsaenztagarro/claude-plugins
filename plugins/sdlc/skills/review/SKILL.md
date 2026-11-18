@@ -42,7 +42,7 @@ With no open pull request, stop and say so. A review needs a change to comment o
 On GitHub, `/code-review <level> <PR>` may do steps 2–4 for you, at `medium` unless the user names a level. Leave out `--comment`: its findings are candidates for step 3, not yet something to post.
 
 Beside the review, one `sdlc:rules` agent holds each changed file to the `.claude/rules/*.md` whose `paths:` match it; it is skipped when none matches.
-Every finding, the review's and the rules agent's, is written `- [high|medium|low] <file>:<line>: <what>` and recorded in a ledger for the pull request, `ledger.mts start pr-<n>`, as `/sdlc:build`'s "Findings converge or stop" runs it.
+Every finding, the review's and the rules agent's, is written `- [high|medium|low] <file>:<line>: <what>` and recorded in a ledger for the pull request, `ledger.mts start pr-<n>`, as `/sdlc:build`'s "Findings converge or stop" runs it: the rules agent and the verifier by the hook, the review's own findings by the session through `ledger.mts node pr-<n> review <file>`.
 Then one `sdlc:verifier` tries to refute each new id; a refuted one is dropped before the walk, with the evidence that refuted it.
 
 **When this session wrote, planned or discussed the change, steps 1–4 run in one fresh agent.**
@@ -90,7 +90,7 @@ Each finding gets two marks, and the pair decides what happens to it.
 
 The ledger and its hooks hold the rounds as `/sdlc:build` states them: at most three per node, none after a round that fixed nothing, the third on opus.
 
-1. **Fix round:** `ledger.mts round pr-<n> <node>` opens it, and one `sdlc:fixer` takes its brief, with that node's fix-it ids and the worktree of each repository they touch; each gets a test that fails first, then the fix, one commit per finding, and a test no realistic mistake fails is deleted instead. Run the project's gate once for the round, push with `/sdlc:git-push`, and reply on each finding's thread with the commit and resolve it.
+1. **Fix round:** `ledger.mts round pr-<n> <node>` opens it, and one `sdlc:fixer` takes its brief, with that node's fix-it ids and the worktree of each repository they touch; each gets a test that fails first, then the fix, one commit per finding, and a test no realistic mistake fails is deleted instead. Run the project's gate once for the round, push with `/sdlc:git-push`, wait for CI with the Monitor tool on `gh pr checks <n> --watch` rather than polling, and reply on each finding's thread with the commit and resolve it.
 2. **Recheck:** a fresh reviewer, and the rules agent when it had findings, answer every open id `F<n>: fixed` or `F<n>: open` before anything new; record the answers. A new finding is posted only when it is new: not one already fixed, accepted or reported.
 3. **Stop** when nothing fix-it is open, or when the hook refuses the next round. What is left goes under Still open in the round's summary, from `ledger.mts still-open pr-<n>`; then close the ledger with that summary.
 

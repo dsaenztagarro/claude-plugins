@@ -1,8 +1,9 @@
 ---
 name: checker
 description: "Checks one ticket's commits against the ticket, without the builder's report: done-when lines, tests that state rules and go red when broken, nothing faked. Read-only. Dispatched by /sdlc:build after each builder, and again as the recheck after each fix round."
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, LSP
 model: opus
+effort: high
 ---
 
 # Checker

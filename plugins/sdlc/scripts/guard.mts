@@ -13,9 +13,16 @@
 // - PreToolUse on Bash: none of the plugin's agents pushes or merges.
 // - Stop: the turn does not end while a ledger is open; closing it needs every
 //   open finding named under Still open.
+// - SubagentStop: a checking agent's report is recorded in the ledger, so a
+//   session that forgets `ledger.mts node` loses no finding and no answer.
+// - PreCompact and SessionStart after a compaction or a resume: each open
+//   ledger's next step is carried into the new context.
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Ledger, MAX_FIX_ROUNDS, forSession } from './ledger.mts';
+
+/** The ledger node each checking agent's report is recorded under. */
+const NODE_OF: Record<string, string> = { checker: 'check', rules: 'rules', security: 'security', walker: 'walk', verifier: 'verify' };
 
 const STARTED = /^Ledger (\S+) recorded in (.+)$/m;
 const OPUS = /opus/i;
@@ -24,7 +31,8 @@ const PUSH = /\bgit(?:\s+-[Cc]\s+\S+)*\s+push\b/;
 const MERGE = /\bgh\s+pr\s+merge\b|\/pulls\/\d+\/merge\b|\/merge_requests\/\d+\/merge\b/;
 
 export type HookEvent = Record<string, any>;
-export type Decision = Record<string, unknown> | null;
+/** A JSON decision, plain text (PreCompact's instructions), or nothing. */
+export type Decision = Record<string, unknown> | string | null;
 
 const deny = (reason: string): Decision => ({
   hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason },
@@ -74,6 +82,38 @@ function stop(ledgers: Ledger[]): Decision {
     + 'If the user asked to stop, or the run is blocked on something only they can clear, `ledger.mts abandon <key> "<why>"`.');
 }
 
+/** The agent's report: its SubagentHandback message when it handed back that way, else its last message. */
+function report(event: HookEvent): string {
+  const transcript: string | undefined = event.agent_transcript_path;
+  if (transcript && fs.existsSync(transcript)) {
+    const handback = fs.readFileSync(transcript, 'utf-8').split('\n').filter((line) => line.includes('SubagentHandback'))
+      .flatMap((line) => {
+        try {
+          const content = JSON.parse(line).message?.content;
+          return Array.isArray(content) ? content : [];
+        } catch {
+          return [];
+        }
+      })
+      .findLast((c) => c?.type === 'tool_use' && c.name === 'SubagentHandback');
+    if (typeof handback?.input?.message === 'string') return handback.input.message;
+  }
+  return event.last_assistant_message ?? '';
+}
+
+/** The ledger the session started last. */
+const latest = (ledgers: Ledger[]): Ledger =>
+  ledgers.reduce((a, b) => (a.events[0]!.at >= b.events[0]!.at ? a : b));
+
+function subagentStop(event: HookEvent, ledgers: Ledger[]): Decision {
+  const node = NODE_OF[role(event.agent_type) ?? ''];
+  if (node) latest(ledgers).record(node, report(event));
+  return null;
+}
+
+const nextSteps = (ledgers: Ledger[]): string =>
+  ledgers.map((l) => `Findings ledger ${l.key} (\`ledger.mts next ${l.key}\`):\n${l.next()}`).join('\n');
+
 function claim(event: HookEvent): void {
   const m = STARTED.exec(event.tool_response?.stdout ?? '');
   if (m && fs.existsSync(m[2]!)) new Ledger(m[2]!).claim(event.session_id);
@@ -89,10 +129,18 @@ export function decide(event: HookEvent): Decision {
   if (event.hook_event_name === 'PreToolUse' && event.tool_name === 'Agent') return dispatch(event, ledgers);
   if (event.hook_event_name === 'PreToolUse' && event.tool_name === 'Bash') return bash(event);
   if (event.hook_event_name === 'Stop') return stop(ledgers);
+  if (event.hook_event_name === 'SubagentStop') return subagentStop(event, ledgers);
+  if (event.hook_event_name === 'PreCompact') {
+    return `Keep in the summary, word for word, that a findings ledger is open and what is due next:\n${nextSteps(ledgers)}`;
+  }
+  if (event.hook_event_name === 'SessionStart') {
+    return { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: `${nextSteps(ledgers)}\nFix rounds open with \`ledger.mts round\`; what is left goes under Still open.` } };
+  }
   return null;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const decision = decide(JSON.parse(fs.readFileSync(0, 'utf-8')));
-  if (decision) process.stdout.write(`${JSON.stringify(decision)}\n`);
+  if (typeof decision === 'string') process.stdout.write(`${decision}\n`);
+  else if (decision) process.stdout.write(`${JSON.stringify(decision)}\n`);
 }

@@ -3,6 +3,7 @@ name: walker
 description: "Walks a pull request's done-when lines through the running product as its user would, recording a GIF per scenario. Dispatched by /sdlc:build after the pull request opens, and again after a walk's fix round."
 tools: Read, Grep, Glob, Bash, Write, mcp__claude-in-chrome__*
 model: sonnet
+maxTurns: 80
 ---
 
 # Walker

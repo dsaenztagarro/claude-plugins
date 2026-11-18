@@ -24,7 +24,7 @@ Nothing in it names a project: what it needs to know, it reads from the adopter'
 
 A project with a product-owned UI also needs [`ds`](../ds/README.md): `/sdlc:build`'s design gate calls it, and stops when it is missing.
 
-`/sdlc:build` and `/sdlc:review` dispatch the plugin's agents — builder, checker, rules, verifier, security, fixer, walker — each with its own tools and model, and keep a findings ledger whose hooks make fix rounds converge or stop. They need Node 22.18 or later. A session that never starts a ledger never runs Node.
+`/sdlc:build` and `/sdlc:review` dispatch the plugin's agents — builder, checker, rules, verifier, security, fixer, walker — each with its own tools and model, and keep a findings ledger whose hooks make fix rounds converge or stop. They need Node 22.18 or later. A session that never starts a ledger never runs Node. A code-intelligence plugin for the project's language gives the agents diagnostics and references through the LSP tool, and turning on push notifications in `/config` tells you when a run needs you.
 
 Its tests: `npm --prefix plugins/sdlc/dev ci && npm --prefix plugins/sdlc/dev test`.
 

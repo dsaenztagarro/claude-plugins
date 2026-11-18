@@ -49,9 +49,16 @@ Every checking agent writes a finding as `- [high|medium|low] <file>:<line>: <wh
 
 A findings ledger numbers each finding, records a recheck's answer by id, and counts fix rounds per node.
 Its hooks hold, in the session that started a ledger only: three rounds per node, none after a round that fixed nothing, the third on opus; no plugin agent pushes or merges; the turn does not end while a ledger is open.
+They also record each checking agent's report as it finishes, so a session that forgets to record one loses no finding, and carry each open ledger's next step through a compaction.
 Why hooks rather than skill text: a session that compacts mid-loop keeps "fixing review findings" and drops the round count, and the next round then runs past the cap on the model that already failed; the ledger on disk survives that, and a hook refuses the round.
 A session below no `.sdlc/runs` folder never starts Node, so a project that never builds through the plugin pays nothing.
 The plugin needs Node 22.18 or later, which runs the TypeScript directly; its tests and type check live in `plugins/sdlc/dev/`, so an install receives no dependency.
+
+### The pipeline uses what Claude Code already ships
+
+A stage reaches for a built-in before writing its own: `/security-review` feeds the security reviewer, the LSP tool gives the writing and checking agents diagnostics and references where a code-intelligence plugin is installed, the Monitor tool waits for CI instead of a polling loop, and a push notification tells the user when a run stops on them.
+Two are kept out on purpose: `isolation: worktree` branches from the default branch, where an epic builds on its batch branch, and `/code-review --fix` would apply fixes outside the ledger's rounds.
+`/simplify` and `/run` are left out until it is shown that the model can invoke them, which their documentation does not say.
 
 ### Only what earns its place ships
 

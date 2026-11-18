@@ -1,7 +1,7 @@
 ---
 name: rules
 description: "Holds each changed file to every path-scoped rule in the project's .claude/rules/ whose paths: match it, clause by clause, citing the rule. Read-only. Dispatched by /sdlc:build beside the checker and by /sdlc:review beside the reviewer, only when a changed file matches a rule."
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, LSP
 model: sonnet
 ---
 

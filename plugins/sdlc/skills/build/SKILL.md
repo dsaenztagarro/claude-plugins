@@ -132,7 +132,7 @@ Each stage is one of the plugin's agents, dispatched fresh; the agent's file hol
 | build | `sdlc:builder` | the ticket key, the worktree and base, the tickets already built on the branch, the `DESIGN:` pages and parked lines, any decision to record |
 | check | `sdlc:checker` | the ticket key, the branch and the commit the ticket started from — never the builder's report |
 | rules | `sdlc:rules` | the base and the branch; skipped when no `.claude/rules/*.md` matches a changed file |
-| security | `sdlc:security` | the base and the branch; only when the checker says `security: yes` |
+| security | `sdlc:security` | the base, the branch and the output of `/security-review`, which the session runs on the branch first; only when the checker says `security: yes` |
 | verify | `sdlc:verifier` | the base, the branch and the findings by id |
 | fix | `sdlc:fixer` | what `ledger.mts round` printed — the node, the round and its open findings by id — then the worktree and base |
 
@@ -146,8 +146,8 @@ Why: a recheck that re-reviews from scratch cannot tell a finding still open fro
 
 ```
  ledger.mts start <ticket>
- checker + rules (+ security)  -> ledger.mts node <ticket> <node> <output>   F1 F2 F3
- verifier on the new ids       -> ledger.mts node <ticket> <node> <output>   F2: refuted
+ checker + rules (+ security)  -> recorded by the hook as they finish     F1 F2 F3
+ verifier on the new ids       -> recorded by the hook                  F2: refuted
  ledger.mts round <ticket> <node> -> opens the round, prints F1 F3
  fixer with that brief         -> one commit per finding
  recheck by that node's agent  -> F1: fixed  F3: open  (answers before anything new)
@@ -157,7 +157,8 @@ Why: a recheck that re-reviews from scratch cannot tell a finding still open fro
 ```
 
 - `ledger.mts` is `node ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mts`; it needs Node 22.18 or later. Start the ledger in the folder the session runs in, before the builder.
-- Record every checking agent's output, the verifier's and every recheck's, in a file passed to `ledger.mts node`. An answer not recorded is a round that fixed nothing.
+- The plugin's checking agents — checker, rules, security, verifier, walker — are recorded by a hook when each finishes, recheck answers included. Any other reviewer's output, such as a fresh review agent or `/code-review`, is recorded by the session: written to a file in the finding format and passed to `ledger.mts node <ticket> <node> <file>`. An answer not recorded is a round that fixed nothing.
+- The ledger survives a compaction: the hook writes each open ledger's next step into the summary and into the context of the session that follows.
 - Only findings that **hold** go to a fixer. Each round is opened by `ledger.mts round <ticket> <node>`, one at a time, and taken by one fixer with all of that node's open ids.
 - `round` refuses a fourth round and a round after one that fixed none of the node's findings; the hook refuses a fixer with no round open, a third round not on opus, and the checker or the verifier on any model but opus. When either refuses, carry on: the findings go under Still open.
 - `ledger.mts next <ticket>` says what is due, for a session that lost its place.
@@ -170,7 +171,12 @@ Why: a recheck that re-reviews from scratch cannot tell a finding still open fro
 - Once every ticket of the run is built, push with `/sdlc:git-push`.
 - Open one pull request: `## Sequence` first — the ticket or the epic, the previous pull request, the next; a Conventional Commit title; a body that compares with the base branch, says what each ticket does, carries the gate's output and the mutation checks, lists parked lines, and holds `## Still open` from the ledger. Then close the ledger.
 - `Closes #N` for each ticket with nothing parked; otherwise `Part of #N`. An epic is never closed by the pull request.
+- Wait for CI with the Monitor tool on `gh pr checks <n> --watch` (or the forge's equivalent), never by polling, and quote its result in the report. A run that outlasts Monitor's deadline is reported as unfinished, never as green.
 - Never merge: a person does.
+
+### When the run needs the user
+
+Send a `PushNotification` whenever the run stops on the user — clarify questions, a security finding, a hook refusal that leaves something only they can decide — and when the pull request is ready to merge, so a run left alone does not wait unseen. It reaches the user only when they turned notifications on in `/config`; the question itself is still asked in the session.
 
 ## 5. Review
 

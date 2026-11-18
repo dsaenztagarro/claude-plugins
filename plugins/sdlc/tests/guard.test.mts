@@ -116,6 +116,53 @@ describe('outward steps', () => {
   });
 });
 
+describe('recording reports', () => {
+  const subagentStop = (cwd: string, fields: HookEvent): HookEvent =>
+    ({ ...fixture('subagent-stop.json'), session_id: SESSION, cwd, agent_transcript_path: undefined, ...fields });
+
+  test('a checking agent\'s report is recorded under its node, without the session calling the ledger', () => {
+    const cwd = owned();
+    decide(subagentStop(cwd, { agent_type: 'sdlc:rules', last_assistant_message: '- [medium] a.js:4: builds markup (stimulus.md)' }));
+    expect(ledger(cwd).open('rules').map((f) => f.id)).toEqual(['F3']);
+  });
+
+  test('a verifier\'s answers close refuted findings', () => {
+    const cwd = owned();
+    decide(subagentStop(cwd, { agent_type: 'sdlc:verifier', last_assistant_message: 'F1: refuted — covered by order_test.rb:12\nF2: holds — reproduced' }));
+    expect(ledger(cwd).open().map((f) => f.id)).toEqual(['F2']);
+  });
+
+  test('a report handed back through SubagentHandback is read from the agent\'s transcript', () => {
+    const cwd = owned();
+    const transcript = path.join(cwd, 'agent.jsonl');
+    fs.writeFileSync(transcript, `${JSON.stringify({ message: { content: [
+      { type: 'tool_use', name: 'SubagentHandback', input: { message: 'F1: fixed' } },
+    ] } })}\n`);
+    decide(subagentStop(cwd, { agent_type: 'sdlc:checker', agent_transcript_path: transcript, last_assistant_message: 'Handed back.' }));
+    expect(ledger(cwd).open().map((f) => f.id)).toEqual(['F2']);
+  });
+
+  test('an agent that checks nothing records nothing', () => {
+    const cwd = owned();
+    decide(subagentStop(cwd, { agent_type: 'sdlc:fixer', last_assistant_message: '- [high] a.rb:9: not a finding' }));
+    expect(ledger(cwd).open()).toHaveLength(2);
+  });
+});
+
+describe('surviving a compaction', () => {
+  test('the compaction keeps each open ledger\'s next step', () => {
+    const cwd = owned();
+    const text = decide({ session_id: SESSION, cwd, hook_event_name: 'PreCompact', trigger: 'auto' });
+    expect(text).toMatch(/ledger 12[\s\S]*check: round 1 of 3, for F1 F2/);
+  });
+
+  test('a session starting after a compaction is told what is due', () => {
+    const cwd = owned();
+    const decision = decide({ session_id: SESSION, cwd, hook_event_name: 'SessionStart', source: 'compact' }) as any;
+    expect(decision.hookSpecificOutput.additionalContext).toMatch(/check: round 1 of 3, for F1 F2/);
+  });
+});
+
 describe('stopping', () => {
   const stop = (cwd: string): HookEvent => ({ session_id: SESSION, cwd, hook_event_name: 'Stop' });
 

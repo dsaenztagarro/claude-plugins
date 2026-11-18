@@ -1,8 +1,9 @@
 ---
 name: verifier
 description: "Tries to refute each finding by id before any fix round spends work on it, answering holds or refuted with the evidence. Read-only. Dispatched by /sdlc:build and /sdlc:review on the findings of the checker, the rules agent, the security reviewer and the reviewer."
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, LSP
 model: opus
+effort: high
 ---
 
 # Verifier

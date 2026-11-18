@@ -14,6 +14,8 @@ The kit installs as two Claude Code plugins from this repository's marketplace, 
 - **A rules agent holds each changed file to the path-scoped rules that match it**, clause by clause, in `/sdlc:build` and `/sdlc:review`, and flags a clause a test could enforce but none does.
 - **A verifier refutes each finding before a fix round spends work on it.**
 - **Fix rounds converge or stop.** A findings ledger gives every finding an id, a recheck answers each by id, and the plugin's hooks refuse a fourth round, a round after one that fixed nothing, a third round not on opus, and any push or merge by a plugin agent; the session cannot end its turn while a ledger is open. What is left goes under Still open in the pull request. Needs Node 22.18 or later.
+- **The ledger records the checking agents' reports itself**, when each finishes, and carries each open ledger's next step through a compaction and into the session that resumes.
+- **`/sdlc:build` uses Claude Code's built-ins:** `/security-review` before the security reviewer, the LSP tool in the writing and checking agents, the Monitor tool to wait for CI, and a push notification when the run needs the user or the pull request is ready.
 
 ### Changed
 
