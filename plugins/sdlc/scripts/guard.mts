@@ -101,9 +101,11 @@ function report(event: HookEvent): string {
   return event.last_assistant_message ?? '';
 }
 
-/** The ledger the session started last. */
+const lastStart = (ledger: Ledger): string => ledger.of('start').at(-1)!.at;
+
+/** The ledger the session started last, a reopen counting as a start. */
 const latest = (ledgers: Ledger[]): Ledger =>
-  ledgers.reduce((a, b) => (a.events[0]!.at >= b.events[0]!.at ? a : b));
+  ledgers.reduce((a, b) => (lastStart(a) >= lastStart(b) ? a : b));
 
 function subagentStop(event: HookEvent, ledgers: Ledger[]): Decision {
   const node = NODE_OF[role(event.agent_type) ?? ''];

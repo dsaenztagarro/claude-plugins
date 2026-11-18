@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { decide, type HookEvent } from '../scripts/guard.mts';
 import { find, start } from '../scripts/ledger.mts';
 
@@ -126,6 +126,7 @@ describe('outward steps', () => {
 });
 
 describe('recording reports', () => {
+  afterEach(() => vi.useRealTimers());
   const subagentStop = (cwd: string, fields: HookEvent): HookEvent =>
     ({ ...fixture('subagent-stop.json'), session_id: SESSION, cwd, agent_transcript_path: undefined, ...fields });
 
@@ -149,6 +150,21 @@ describe('recording reports', () => {
     ] } })}\n`);
     decide(subagentStop(cwd, { agent_type: 'sdlc:checker', agent_transcript_path: transcript, last_assistant_message: 'Handed back.' }));
     expect(ledger(cwd).open().map((f) => f.id)).toEqual(['F2']);
+  });
+
+  test('a report goes to the ledger the session started last, counting a reopen as a start', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const cwd = owned();
+    vi.advanceTimersByTime(1000);
+    const other = start(cwd, '13');
+    decide({ ...fixture('pre-tool-use-bash-main-session.json'), hook_event_name: 'PostToolUse', cwd,
+      tool_input: { command: 'node ledger.mts start 13' }, tool_response: { stdout: `Ledger 13 recorded in ${other.folder}\n` } });
+    ledger(cwd).append('abandoned', { why: 'asking the user' });
+    vi.advanceTimersByTime(1000);
+    start(cwd, '12');
+    decide(subagentStop(cwd, { agent_type: 'sdlc:rules', last_assistant_message: '- [medium] a.js:4: builds markup (stimulus.md)' }));
+    expect(ledger(cwd).open('rules')).toHaveLength(1);
+    expect(find(cwd, '13')!.open()).toHaveLength(0);
   });
 
   test('an agent that checks nothing records nothing', () => {
