@@ -90,7 +90,7 @@ Each finding gets two marks, and the pair decides what happens to it.
 
 The ledger and its hooks hold the rounds as `/sdlc:build` states them: at most three per node, none after a round that fixed nothing, the third on opus.
 
-1. **Fix round:** one `sdlc:fixer` per node and repository, `Node: <node>` on its first line, with that node's fix-it ids; each gets a test that fails first, then the fix, one commit per finding, and a test no realistic mistake fails is deleted instead. Run the project's gate once for the round, push with `/sdlc:git-push`, and reply on each finding's thread with the commit and resolve it.
+1. **Fix round:** `ledger.mts round pr-<n> <node>` opens it, and one `sdlc:fixer` takes its brief, with that node's fix-it ids and the worktree of each repository they touch; each gets a test that fails first, then the fix, one commit per finding, and a test no realistic mistake fails is deleted instead. Run the project's gate once for the round, push with `/sdlc:git-push`, and reply on each finding's thread with the commit and resolve it.
 2. **Recheck:** a fresh reviewer, and the rules agent when it had findings, answer every open id `F<n>: fixed` or `F<n>: open` before anything new; record the answers. A new finding is posted only when it is new: not one already fixed, accepted or reported.
 3. **Stop** when nothing fix-it is open, or when the hook refuses the next round. What is left goes under Still open in the round's summary, from `ledger.mts still-open pr-<n>`; then close the ledger with that summary.
 

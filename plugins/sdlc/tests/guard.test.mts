@@ -25,46 +25,65 @@ function owned(): string {
   return cwd;
 }
 
-const fixer = (cwd: string, model?: string, node = 'check'): HookEvent => ({
-  ...fixture('pre-tool-use-bash-main-session.json'), cwd, tool_name: 'Agent',
-  tool_input: { subagent_type: 'sdlc:fixer', prompt: `Node: ${node}\nF1, F2`, ...(model ? { model } : {}) },
+const fixer = (cwd: string, model?: string): HookEvent => ({
+  ...fixture('pre-tool-use-agent-main-session.json'), session_id: SESSION, cwd,
+  tool_input: { subagent_type: 'sdlc:fixer', prompt: 'check: fix round 1 of 3.\n- F1 ...', ...(model ? { model } : {}) },
 });
 
 const reason = (d: ReturnType<typeof decide>) => (d as any)?.hookSpecificOutput?.permissionDecisionReason ?? (d as any)?.reason;
 const ledger = (cwd: string) => find(cwd, '12')!;
+const refused = (cwd: string, node = 'check') => {
+  const result = ledger(cwd).openRound(node);
+  return 'refused' in result ? result.refused : null;
+};
+
+/** Open the node's next round and dispatch its fixer, returning the hook's decision. */
+const fixRound = (cwd: string, model?: string) => {
+  expect(refused(cwd)).toBeNull();
+  return decide(fixer(cwd, model));
+};
 
 describe('fix rounds', () => {
   test('a fourth round for a node is refused', () => {
     const cwd = owned();
-    expect(decide(fixer(cwd))).toBeNull();
+    expect(fixRound(cwd)).toBeNull();
     ledger(cwd).record('check', 'F1: fixed');
-    expect(decide(fixer(cwd))).toBeNull();
+    expect(fixRound(cwd)).toBeNull();
     ledger(cwd).record('check', 'F2: fixed\n- [low] a.rb:3: three');
-    expect(decide(fixer(cwd, 'opus'))).toBeNull();
+    expect(fixRound(cwd, 'opus')).toBeNull();
     ledger(cwd).record('check', 'F3: fixed\n- [low] a.rb:4: four');
-    expect(reason(decide(fixer(cwd, 'opus')))).toMatch(/3 fix rounds/);
+    expect(refused(cwd)).toMatch(/3 fix rounds/);
   });
 
   test('a round after one that fixed none of the node\'s findings is refused', () => {
     const cwd = owned();
-    expect(decide(fixer(cwd))).toBeNull();
+    expect(fixRound(cwd)).toBeNull();
     ledger(cwd).record('check', 'F1: open\nF2: open');
-    expect(reason(decide(fixer(cwd)))).toMatch(/fixed none/);
+    expect(refused(cwd)).toMatch(/fixed none/);
   });
 
   test('the last round runs on opus', () => {
     const cwd = owned();
-    decide(fixer(cwd));
+    fixRound(cwd);
     ledger(cwd).record('check', 'F1: fixed');
-    decide(fixer(cwd));
+    fixRound(cwd);
     ledger(cwd).record('check', 'F2: fixed\n- [low] a.rb:3: three');
-    expect(reason(decide(fixer(cwd, 'sonnet')))).toMatch(/model: opus/);
+    expect(reason(fixRound(cwd, 'sonnet'))).toMatch(/model: opus/);
     expect(decide(fixer(cwd, 'opus'))).toBeNull();
   });
 
-  test('a fixer must name a node with open findings', () => {
+  test('a fixer takes only a round the ledger opened, and each round once', () => {
     const cwd = owned();
-    expect(reason(decide(fixer(cwd, undefined, 'walk')))).toMatch(/Node: <name>.*\(check\)/);
+    expect(reason(decide(fixer(cwd)))).toMatch(/ledger\.mts round/);
+    expect(fixRound(cwd)).toBeNull();
+    expect(reason(decide(fixer(cwd)))).toMatch(/ledger\.mts round/);
+  });
+
+  test('a round opens only for a node with open findings, one round at a time', () => {
+    const cwd = owned();
+    expect(refused(cwd, 'walk')).toMatch(/nothing to fix/);
+    expect(refused(cwd)).toBeNull();
+    expect(refused(cwd)).toMatch(/is open: dispatch sdlc:fixer/);
   });
 });
 

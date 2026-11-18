@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 // The findings ledger of one build or review: every finding a checking agent
-// reports gets an id, every fix round is counted per node, and an answer by id
-// closes a finding. The guard reads it to decide whether a fix round may start
-// and whether the session may stop.
+// reports gets an id, every fix round is opened here and counted per node, and
+// an answer by id closes a finding. The guard reads it to decide whether a
+// fixer may be dispatched and whether the session may stop.
 //
 // A checking agent writes each finding on a line of its own,
 // `- [high|medium|low] <file>:<line>: <what>`; a recheck or the verifier
@@ -100,6 +100,41 @@ export class Ledger {
     return this.of('fix-round').filter((e) => e.node === node).length;
   }
 
+  /** The round `round` opened that no fixer has taken yet, or null. */
+  pending(): Event | null {
+    const last = this.events.findLast((e) => e.event === 'round-pending' || e.event === 'fix-round');
+    return last?.event === 'round-pending' ? last : null;
+  }
+
+  /** Why the node may not have another fix round, or null when it may. */
+  refusal(node: string): string | null {
+    if (!this.open(node).length) return `${node} has no open finding: there is nothing to fix.`;
+    if (this.rounds(node) >= MAX_FIX_ROUNDS) {
+      return `${node} has had its ${MAX_FIX_ROUNDS} fix rounds. List its open findings under Still open `
+        + `(\`ledger.mts still-open ${this.key}\`) and carry on.`;
+    }
+    if (!this.progressSinceLastRound(node)) {
+      return `${node}'s last fix round fixed none of its findings, so another would repeat it. Make sure the recheck `
+        + 'answered each open id (`F<n>: fixed|open`) and was recorded; if it was, list them under Still open and carry on.';
+    }
+    return null;
+  }
+
+  /** Open the node's next fix round for one fixer to take; returns the refusal instead when it may not start. */
+  openRound(node: string): { refused: string } | { brief: string } {
+    const pending = this.pending();
+    if (pending) return { refused: `A round for ${pending.node} is open: dispatch sdlc:fixer for it first.` };
+    const refused = this.refusal(node);
+    if (refused) {
+      this.append('fix-refused', { node, why: refused });
+      return { refused };
+    }
+    const round = this.rounds(node) + 1;
+    this.append('round-pending', { node, round });
+    const last = round === MAX_FIX_ROUNDS ? ', the last: dispatch it with `model: opus`' : '';
+    return { brief: `${node}: fix round ${round} of ${MAX_FIX_ROUNDS}${last}.\n${this.open(node).map(stillOpenLine).join('\n')}` };
+  }
+
   /** Whether the node's last fix round fixed any of its findings; true before its first round. */
   progressSinceLastRound(node: string): boolean {
     const last = this.events.findLastIndex((e) => e.event === 'fix-round' && e.node === node);
@@ -173,7 +208,7 @@ export function forSession(cwd: string, session: string | undefined): Ledger[] {
     .filter((ledger) => ledger.active() && ledger.owner() === session);
 }
 
-const USAGE = 'usage: ledger.mts start <key> | node <key> <node> <output-file> | next <key> | still-open <key> | close <key> [<still-open-file>] | abandon <key> <why>\n';
+const USAGE = 'usage: ledger.mts start <key> | node <key> <node> <output-file> | round <key> <node> | next <key> | still-open <key> | close <key> [<still-open-file>] | abandon <key> <why>\n';
 
 export function main(argv: string[], cwd = process.cwd()): number {
   const [command, key, ...rest] = argv;
@@ -200,6 +235,16 @@ export function main(argv: string[], cwd = process.cwd()): number {
       const open = ledger.open();
       out(`${node}: ${added.length} new, ${answered.length} answered, ${open.length} open`);
       if (open.length) out(open.map(stillOpenLine).join('\n'));
+      return 0;
+    }
+    case 'round': {
+      if (!rest[0]) break;
+      const result = ledger.openRound(rest[0]);
+      if ('refused' in result) {
+        process.stderr.write(`${result.refused}\n`);
+        return 1;
+      }
+      out(result.brief);
       return 0;
     }
     case 'next':

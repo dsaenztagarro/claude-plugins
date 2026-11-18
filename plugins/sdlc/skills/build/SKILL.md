@@ -134,7 +134,7 @@ Each stage is one of the plugin's agents, dispatched fresh; the agent's file hol
 | rules | `sdlc:rules` | the base and the branch; skipped when no `.claude/rules/*.md` matches a changed file |
 | security | `sdlc:security` | the base and the branch; only when the checker says `security: yes` |
 | verify | `sdlc:verifier` | the base, the branch and the findings by id |
-| fix | `sdlc:fixer` | `Node: <node>` on the first line, then that node's open findings by id, the worktree and base |
+| fix | `sdlc:fixer` | what `ledger.mts round` printed — the node, the round and its open findings by id — then the worktree and base |
 
 For the first ticket the session creates the worktree with its branch cut from the freshly fetched base, or continued from the branch when one exists locally or on origin; every later ticket of a batch works in the same worktree, on the commits its predecessors left.
 The checker and the rules agent start together after the builder; both are read-only.
@@ -148,7 +148,8 @@ Why: a recheck that re-reviews from scratch cannot tell a finding still open fro
  ledger.mts start <ticket>
  checker + rules (+ security)  -> ledger.mts node <ticket> <node> <output>   F1 F2 F3
  verifier on the new ids       -> ledger.mts node <ticket> <node> <output>   F2: refuted
- fixer, Node: <node>, F1 F3    -> one commit per finding
+ ledger.mts round <ticket> <node> -> opens the round, prints F1 F3
+ fixer with that brief         -> one commit per finding
  recheck by that node's agent  -> F1: fixed  F3: open  (answers before anything new)
  ...at most 3 rounds per node, the third on opus
  ledger.mts still-open <ticket> -> the pull request body's "## Still open"
@@ -157,8 +158,8 @@ Why: a recheck that re-reviews from scratch cannot tell a finding still open fro
 
 - `ledger.mts` is `node ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mts`; it needs Node 22.18 or later. Start the ledger in the folder the session runs in, before the builder.
 - Record every checking agent's output, the verifier's and every recheck's, in a file passed to `ledger.mts node`. An answer not recorded is a round that fixed nothing.
-- Only findings that **hold** go to a fixer. One fixer per node per round, with all of that node's open ids.
-- The hook refuses a fourth round, a round after one that fixed none of the node's findings, a third round not on opus, and the checker or the verifier on any model but opus. When it refuses, carry on: the findings go under Still open.
+- Only findings that **hold** go to a fixer. Each round is opened by `ledger.mts round <ticket> <node>`, one at a time, and taken by one fixer with all of that node's open ids.
+- `round` refuses a fourth round and a round after one that fixed none of the node's findings; the hook refuses a fixer with no round open, a third round not on opus, and the checker or the verifier on any model but opus. When either refuses, carry on: the findings go under Still open.
 - `ledger.mts next <ticket>` says what is due, for a session that lost its place.
 - A finding never holds the pull request. A security finding is never left open for cost: it goes to the user.
 - The session cannot end its turn while a ledger is open. Close it once Still open names every open id, or `ledger.mts abandon <ticket> "<why>"` when the user stops the run or it is blocked on them.

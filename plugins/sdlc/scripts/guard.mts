@@ -7,10 +7,9 @@
 //
 // - PostToolUse on Bash: the session whose `ledger.mts start` printed its line
 //   owns that ledger.
-// - PreToolUse on Agent: a fixer names its node on the first line
-//   (`Node: <name>`) and gets at most three rounds per node, none after a round
-//   that fixed nothing, the third on opus; the checker and the verifier run on
-//   opus.
+// - PreToolUse on Agent: a fixer takes only a round `ledger.mts round` opened,
+//   which it refuses past three per node or after a round that fixed nothing;
+//   the third round, the checker and the verifier run on opus.
 // - PreToolUse on Bash: none of the plugin's agents pushes or merges.
 // - Stop: the turn does not end while a ledger is open; closing it needs every
 //   open finding named under Still open.
@@ -43,25 +42,13 @@ function dispatch(event: HookEvent, ledgers: Ledger[]): Decision {
     return deny(`sdlc:${agent} runs on opus, a different model from the agents whose work it checks: dispatch it without \`model\`, or with \`model: opus\`.`);
   }
   if (agent !== 'fixer') return null;
-  const node = /^\s*Node:\s*(\S+)/.exec(event.tool_input?.prompt ?? '')?.[1];
-  const ledger = ledgers.find((l) => node !== undefined && l.open(node).length);
-  if (!node || !ledger) {
-    const open = ledgers.flatMap((l) => [...new Set(l.open().map((f) => f.node))]);
-    return deny('Name the node whose findings this round fixes on the prompt\'s first line, `Node: <name>`, '
-      + `one with open findings in the ledger${open.length ? ` (${open.join(', ')})` : ': none is open, so there is nothing to fix'}.`);
+  const ledger = ledgers.find((l) => l.pending());
+  if (!ledger) {
+    return deny('A fixer takes a round the ledger opened: run `ledger.mts round <key> <node>` and hand its output to the fixer. '
+      + 'It refuses a round past the limit or after one that fixed nothing.');
   }
-  const rounds = ledger.rounds(node);
-  if (rounds >= MAX_FIX_ROUNDS) {
-    ledger.append('fix-refused', { node, why: 'limit' });
-    return deny(`${node} has had its ${MAX_FIX_ROUNDS} fix rounds. List its open findings under Still open `
-      + `(\`ledger.mts still-open ${ledger.key}\`) and carry on.`);
-  }
-  if (!ledger.progressSinceLastRound(node)) {
-    ledger.append('fix-refused', { node, why: 'no progress' });
-    return deny(`${node}'s last fix round fixed none of its findings, so another would repeat it. Make sure the recheck `
-      + `answered each open id (\`F<n>: fixed|open\`) and was recorded; if it was, list them under Still open and carry on.`);
-  }
-  if (rounds === MAX_FIX_ROUNDS - 1 && !OPUS.test(model ?? '')) {
+  const { node, round } = ledger.pending()!;
+  if (round === MAX_FIX_ROUNDS && !OPUS.test(model ?? '')) {
     return deny(`This is ${node}'s last fix round, and two rounds on the same model did not finish it: dispatch it with \`model: opus\`.`);
   }
   ledger.append('fix-round', { node, model: model ?? null });
