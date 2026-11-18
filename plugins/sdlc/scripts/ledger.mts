@@ -169,7 +169,12 @@ export class Ledger {
   next(): string {
     if (!this.active()) return `Ledger ${this.key} is ${this.of('closed').length ? 'closed' : 'abandoned'}.`;
     const nodes = [...new Set(this.open().map((f) => f.node))];
-    if (!nodes.length) return `No finding is open: close it with \`ledger.mts close ${this.key}\`.`;
+    if (!nodes.length) {
+      const accepted = this.accepted().map((f) => f.id);
+      return accepted.length
+        ? `${accepted.join(' ')} accepted: list them under Still open from \`ledger.mts still-open ${this.key}\`, then \`ledger.mts close ${this.key} <body-file>\`.`
+        : `No finding is open: close it with \`ledger.mts close ${this.key}\`.`;
+    }
     return nodes.map((node) => {
       const ids = this.open(node).map((f) => f.id).join(' ');
       const rounds = this.rounds(node);

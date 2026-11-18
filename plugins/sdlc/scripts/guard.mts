@@ -76,7 +76,7 @@ function stop(ledgers: Ledger[]): Decision {
     const open = l.open().map((f) => f.id);
     return open.length
       ? `- ${l.key}: ${open.join(' ')} open. Fix them, or list them under Still open in the pull request body from \`ledger.mts still-open ${l.key}\`, then \`ledger.mts close ${l.key} <body-file>\`.`
-      : `- ${l.key}: nothing is open; close it with \`ledger.mts close ${l.key}\`.`;
+      : `- ${l.key}: ${l.next()}`;
   });
   return block(`A findings ledger is still open:\n${lines.join('\n')}\n`
     + 'If the user asked to stop, or the run is blocked on something only they can clear, `ledger.mts abandon <key> "<why>"`.');

@@ -214,6 +214,14 @@ describe('stopping', () => {
     expect(ledger(cwd).rounds('check')).toBe(1);
   });
 
+  test('with only accepted findings left, the turn is held until the body names them', () => {
+    const cwd = owned();
+    ledger(cwd).accept('F1', 'speculative');
+    ledger(cwd).accept('F2', 'speculative');
+    expect(reason(decide(stop(cwd)))).toMatch(/12: F1 F2 accepted.*ledger\.mts close 12 <body-file>/);
+    expect(ledger(cwd).next()).toMatch(/F1 F2 accepted.*ledger\.mts close 12 <body-file>/);
+  });
+
   test('another session in the same folder is never held by it', () => {
     const cwd = owned();
     expect(decide({ ...stop(cwd), session_id: 'someone-else' })).toBeNull();
