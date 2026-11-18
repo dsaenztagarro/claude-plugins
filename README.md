@@ -22,7 +22,22 @@ The project template these plugins read from, `AGENTS.md` and its routing table,
 claude plugin validate .                                   # both manifests, every skill and agent
 npm --prefix plugins/sdlc/dev ci && npm --prefix plugins/sdlc/dev test
 npm --prefix plugins/sdlc/dev run typecheck
-claude --plugin-dir plugins/sdlc                           # try a plugin from this checkout
+```
+
+To use the plugins you are changing, add the marketplace from a clone instead of from GitHub; the install names stay `sdlc@dsaenztagarro` and `ds@dsaenztagarro`.
+
+```bash
+claude plugin marketplace add <path-to-clone>
+claude plugin install sdlc@dsaenztagarro
+```
+
+A directory marketplace's plugin is read from its folder, never copied, so an edit takes effect at the next session start or `/reload-plugins`, with no `claude plugin update`.
+Keep that clone on `master` and make changes in worktrees: every session then runs what has merged.
+
+To try a branch before it merges, start one session on its worktree; the session-only copy replaces the installed plugin of the same name for that session alone.
+
+```bash
+claude --plugin-dir <worktree>/plugins/sdlc
 ```
 
 ## License
