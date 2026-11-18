@@ -156,7 +156,7 @@ Why: a recheck that re-reviews from scratch cannot tell a finding still open fro
  ledger.mts close <ticket> <body-file>
 ```
 
-- `ledger.mts` is `node ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mts`; it needs Node 22.18 or later. Start the ledger in the folder the session runs in, before the builder.
+- `ledger.mts` is `node ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mts`; it needs Node 22.18 or later. Start the ledger in the folder the session runs in, before the builder, and put the run's worktree below that folder: the hooks find the ledger by walking up from where each tool call runs, so a worktree beside the repository leaves a fixer's push and the session's turn unguarded.
 - The plugin's checking agents — checker, rules, security, verifier, walker — are recorded by a hook when each finishes, recheck answers included. Any other reviewer's output, such as a fresh review agent or `/code-review`, is recorded by the session: written to a file in the finding format and passed to `ledger.mts node <ticket> <node> <file>`. An answer not recorded is a round that fixed nothing.
 - The ledger survives a compaction: the hook writes each open ledger's next step into the summary and into the context of the session that follows.
 - Only findings that **hold** go to a fixer. Each round is opened by `ledger.mts round <ticket> <node>`, one at a time, and taken by one fixer with all of that node's open ids. A finding left unfixed by decision, the user's or the review's triage, is taken out first with `ledger.mts accept <ticket> <id> "<why>"`; it stays under Still open with its reason.
