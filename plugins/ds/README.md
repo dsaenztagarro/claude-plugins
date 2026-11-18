@@ -3,8 +3,8 @@
 The Claude Design handoff: design repositories, briefs, reading an export back and adopting it into the application.
 
 ```bash
-claude plugin marketplace add dsaenztagarro/agent-sdlc
-claude plugin install ds@agent-sdlc
+claude plugin marketplace add dsaenztagarro/claude-plugins
+claude plugin install ds@dsaenztagarro
 ```
 
 Every name it reads — the design repository, its checkout, the artefact and its commands — comes from the block of names in the adopter's `AGENTS.md` design section; a name missing there is asked for, never guessed.

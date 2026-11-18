@@ -92,7 +92,7 @@ Why once: questions asked ticket by ticket during the build stop the run once pe
 
 One fresh agent, read-only, given the clarified ticket.
 A project whose `AGENTS.md` has no design section has no product-owned UI: the agent returns `no-ui` and stops.
-A project with a design section needs the `ds` plugin: when `/ds:handoff` is not among the available skills, the run stops and names `claude plugin install ds@agent-sdlc`. Another plugin's skill of a similar name is never a stand-in: its rules are not this gate's.
+A project with a design section needs the `ds` plugin: when `/ds:handoff` is not among the available skills, the run stops and names `claude plugin install ds@dsaenztagarro`. Another plugin's skill of a similar name is never a stand-in: its rules are not this gate's.
 Otherwise it reads the design names in `AGENTS.md` and the design checkout at its current revision, by the `ds` plugin's `/ds:handoff`, and gives each surface the ticket adds or changes one verdict:
 
 - **drawn** — the page that draws it, for the builder to build to;

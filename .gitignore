@@ -1,4 +1,4 @@
-# Local Claude Code settings (copy settings.local.json.example to start)
+# Local Claude Code settings
 .claude/settings.local.json
 
 # One checkout per ticket (`claude --worktree issue-<N>`)
@@ -18,8 +18,3 @@ Thumbs.db
 .vscode/
 
 plugins/sdlc/**/node_modules/
-
-# Add project build artifacts / dependency dirs below, e.g.:
-# target/
-# node_modules/
-# dist/

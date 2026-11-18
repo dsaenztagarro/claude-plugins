@@ -3,8 +3,8 @@
 The delivery pipeline on the issue tracker (GitHub Issues or Jira): plan, build, review, close and release, one ticket or one epic at a time.
 
 ```bash
-claude plugin marketplace add dsaenztagarro/agent-sdlc
-claude plugin install sdlc@agent-sdlc
+claude plugin marketplace add dsaenztagarro/claude-plugins
+claude plugin install sdlc@dsaenztagarro
 ```
 
 Nothing in it names a project: what it needs to know, it reads from the adopter's `AGENTS.md`.

@@ -1,7 +1,7 @@
 {
-  "name": "agent-sdlc",
+  "name": "dsaenztagarro",
   "owner": { "name": "David Sáenz", "url": "https://github.com/dsaenztagarro" },
-  "metadata": { "description": "The agent-sdlc delivery pipeline and Claude Design handoff, as Claude Code plugins" },
+  "metadata": { "description": "Claude Code plugins: the agent-sdlc delivery pipeline and the Claude Design handoff" },
   "plugins": [
     {
       "name": "sdlc",

@@ -6,7 +6,7 @@ argument-hint: "[short description of the improvement]"
 
 # Propose a template improvement upstream
 
-An improvement to the workflow found while using it is worth something only if it reaches every adopter. This skill sends it to `dsaenztagarro/agent-sdlc`, or to the upstream the user names if this project tracks a fork.
+An improvement to the workflow found while using it is worth something only if it reaches every adopter. This skill sends it to `dsaenztagarro/claude-plugins`, where both the pipeline and the template are maintained, or to the upstream the user names if this project tracks a fork.
 
 ## 1. Confirm it generalizes
 
@@ -27,13 +27,13 @@ Finish the task at hand first; do not drop it to chase the idea.
 Every proposal joins **one open issue labelled `template-feedback`** as a `- [ ]` item, never an issue of its own: the maintainer works the list in one pull request.
 
 ```bash
-gh issue list --repo dsaenztagarro/agent-sdlc --label template-feedback --state open
+gh issue list --repo dsaenztagarro/claude-plugins --label template-feedback --state open
 # none open: create it once
-gh issue create --repo dsaenztagarro/agent-sdlc --label template-feedback \
+gh issue create --repo dsaenztagarro/claude-plugins --label template-feedback \
   --title "Template feedback" --body "Workflow improvements raised from downstream projects, one item each."
 ```
 
-First search the issue and the closed ones for the same idea (`gh issue list --repo dsaenztagarro/agent-sdlc --search "<keywords>" --state all`); if it is there, add to that item instead.
+First search the issue and the closed ones for the same idea (`gh issue list --repo dsaenztagarro/claude-plugins --search "<keywords>" --state all`); if it is there, add to that item instead.
 Then append the item with `gh issue edit <n> --body-file`, keeping the body as it was: the problem, the change, the file, why it generalizes.
 
 Report the issue URL. A pull request instead of an item is opt-in, only when the user asks for one.
