@@ -14,12 +14,20 @@ It also grew by accretion: commands with identical bodies under two names, skill
 
 ### The kit ships as Claude Code plugins from this repository's marketplace
 
-This repository is the public marketplace `agent-sdlc`, with two plugins: `sdlc`, the delivery pipeline, and `ds`, the Claude Design handoff.
+This repository is the public marketplace `dsaenztagarro`, with two plugins: `sdlc`, the delivery pipeline, and `ds`, the Claude Design handoff.
 They stay two because a project without a product-owned UI needs the pipeline and none of the design skills, and they meet at one seam: `/sdlc:build`'s design gate calls `/ds:handoff`, and nothing in `ds` calls back.
-A public, project-agnostic plugin joins this marketplace with a `README.md` of its own in its directory; the root README indexes the plugins and keeps the template.
+A public, project-agnostic plugin joins this marketplace with a `README.md` of its own in its directory; the root README indexes the plugins.
 A plugin is installed once per machine, every project on that machine reads the same copy, and `claude plugin update` moves them all.
 A project keeps only what is its own: its `AGENTS.md`, its path-scoped rules, and a skill only it uses.
 A project never carries a copy of a plugin's skill or agent; what its copy did differently is a rule in its `AGENTS.md`.
+
+### The plugins and the project template are two repositories
+
+The marketplace is `dsaenztagarro/claude-plugins`; the template a project is created from is `dsaenztagarro/agent-sdlc`.
+They change for different readers: a plugin moves every machine on `claude plugin update`, while the template is copied once into each new project and never updates in place.
+Kept together, every adopter's first commit deleted the marketplace from its copy, and a plugin that is not about the delivery pipeline had no honest home.
+The marketplace is named for its owner, not for one plugin, so installs read `sdlc@dsaenztagarro` and a new plugin joins without a rename; a generic name such as `claude-plugins` would read as Anthropic's own.
+Workflow feedback from either goes to one `template-feedback` issue on the plugins repository, where the pipeline is maintained.
 
 ### The public boundary is a stranger's machine
 

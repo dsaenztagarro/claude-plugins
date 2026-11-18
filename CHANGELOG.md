@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+The repository is the plugins alone, renamed `claude-plugins`, with the marketplace named for its owner; the project template moves to its own repository, `dsaenztagarro/agent-sdlc`.
+
+### Changed
+
+- **BREAKING: the marketplace is `dsaenztagarro`, served from `dsaenztagarro/claude-plugins`.** Installs read `sdlc@dsaenztagarro` and `ds@dsaenztagarro`. On each machine, `claude plugin marketplace remove agent-sdlc`, then `claude plugin marketplace add dsaenztagarro/claude-plugins` and install both plugins again.
+- **`/sdlc:template-feedback` files its items on `dsaenztagarro/claude-plugins`**, where the pipeline is maintained.
+
+### Removed
+
+- **The project template:** `AGENTS.md`'s fill-in sections, the testing rule, the local settings example, `docs/SECURITY.md` and the decision-record convention now live in [agent-sdlc](https://github.com/dsaenztagarro/agent-sdlc), which a project is created from.
+
 ## [2.0.0] - 2026-11-18
 
 The kit installs as two Claude Code plugins from this repository's marketplace, `sdlc` and `ds`, once per machine, with one copy of each skill, and no longer as an APM package copied into each project. `sdlc` ships its own agents, and a findings ledger whose hooks make every fix round converge or stop.
@@ -244,21 +255,21 @@ First tagged release of the AI-engineering template — the agent-driven workflo
 - **Skills** — `epic` (turn a design doc into a phased GitHub epic, shipped one ticket at a time) and `template-feedback` (raise a reusable, project-agnostic improvement back to this upstream template).
 - **MIT license** and project README.
 
-[Unreleased]: https://github.com/dsaenztagarro/agent-sdlc/compare/v2.0.0...HEAD
-[2.0.0]: https://github.com/dsaenztagarro/agent-sdlc/compare/v1.0.6...v2.0.0
-[1.0.6]: https://github.com/dsaenztagarro/agent-sdlc/compare/v1.0.5...v1.0.6
-[1.0.5]: https://github.com/dsaenztagarro/agent-sdlc/compare/v1.0.4...v1.0.5
-[1.0.4]: https://github.com/dsaenztagarro/agent-sdlc/compare/v1.0.3...v1.0.4
-[1.0.3]: https://github.com/dsaenztagarro/agent-sdlc/compare/v1.0.2...v1.0.3
-[1.0.2]: https://github.com/dsaenztagarro/agent-sdlc/compare/v1.0.1...v1.0.2
-[1.0.1]: https://github.com/dsaenztagarro/agent-sdlc/compare/v1.0.0...v1.0.1
-[1.0.0]: https://github.com/dsaenztagarro/agent-sdlc/compare/v0.7.0...v1.0.0
-[0.7.0]: https://github.com/dsaenztagarro/agent-sdlc/compare/v0.6.0...v0.7.0
-[0.6.0]: https://github.com/dsaenztagarro/agent-sdlc/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/dsaenztagarro/agent-sdlc/compare/v0.4.2...v0.5.0
-[0.4.2]: https://github.com/dsaenztagarro/agent-sdlc/compare/v0.4.1...v0.4.2
-[0.4.1]: https://github.com/dsaenztagarro/agent-sdlc/compare/v0.4.0...v0.4.1
-[0.4.0]: https://github.com/dsaenztagarro/agent-sdlc/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/dsaenztagarro/agent-sdlc/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/dsaenztagarro/agent-sdlc/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/dsaenztagarro/agent-sdlc/releases/tag/v0.1.0
+[Unreleased]: https://github.com/dsaenztagarro/claude-plugins/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/dsaenztagarro/claude-plugins/compare/v1.0.6...v2.0.0
+[1.0.6]: https://github.com/dsaenztagarro/claude-plugins/compare/v1.0.5...v1.0.6
+[1.0.5]: https://github.com/dsaenztagarro/claude-plugins/compare/v1.0.4...v1.0.5
+[1.0.4]: https://github.com/dsaenztagarro/claude-plugins/compare/v1.0.3...v1.0.4
+[1.0.3]: https://github.com/dsaenztagarro/claude-plugins/compare/v1.0.2...v1.0.3
+[1.0.2]: https://github.com/dsaenztagarro/claude-plugins/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/dsaenztagarro/claude-plugins/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/dsaenztagarro/claude-plugins/compare/v0.7.0...v1.0.0
+[0.7.0]: https://github.com/dsaenztagarro/claude-plugins/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/dsaenztagarro/claude-plugins/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/dsaenztagarro/claude-plugins/compare/v0.4.2...v0.5.0
+[0.4.2]: https://github.com/dsaenztagarro/claude-plugins/compare/v0.4.1...v0.4.2
+[0.4.1]: https://github.com/dsaenztagarro/claude-plugins/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/dsaenztagarro/claude-plugins/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/dsaenztagarro/claude-plugins/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/dsaenztagarro/claude-plugins/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/dsaenztagarro/claude-plugins/releases/tag/v0.1.0
