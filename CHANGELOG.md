@@ -6,34 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-The kit installs as two Claude Code plugins from this repository's marketplace, once per machine, with one copy of each skill.
+## [2.0.0] - 2026-11-18
+
+The kit installs as two Claude Code plugins from this repository's marketplace, `sdlc` and `ds`, once per machine, with one copy of each skill, and no longer as an APM package copied into each project. `sdlc` ships its own agents, and a findings ledger whose hooks make every fix round converge or stop.
 
 ### Added
 
-- **`sdlc` ships its agents:** builder, checker, rules, verifier, security, fixer and walker, each with its own tools and model. The checker and the verifier run on opus, a different model from the agents whose work they check.
-- **A rules agent holds each changed file to the path-scoped rules that match it**, clause by clause, in `/sdlc:build` and `/sdlc:review`, and flags a clause a test could enforce but none does.
-- **A verifier refutes each finding before a fix round spends work on it.**
-- **Fix rounds converge or stop.** A findings ledger gives every finding an id, a recheck answers each by id, and the plugin's hooks refuse a fourth round, a round after one that fixed nothing, a third round not on opus, and any push or merge by a plugin agent; a turn ending while a ledger is open is held once, with what is due. What is left goes under Still open in the pull request. Needs Node 22.18 or later.
-- **The ledger records the checking agents' reports itself**, when each finishes, and carries each open ledger's next step through a compaction and into the session that resumes.
-- **`/sdlc:build` uses Claude Code's built-ins:** `/security-review` before the security reviewer, the LSP tool in the writing and checking agents, the Monitor tool to wait for CI, and a push notification when the run needs the user or the pull request is ready.
+- **`sdlc` ships its agents:** builder, checker, rules, verifier, security, fixer and walker, each with its own tools and model. The checker and the verifier run on opus, a different model from the agents whose work they check. (#87)
+- **A rules agent holds each changed file to the path-scoped rules that match it**, clause by clause, in `/sdlc:build` and `/sdlc:review`, and flags a clause a test could enforce but none does. (#87)
+- **A verifier refutes each finding before a fix round spends work on it.** (#87)
+- **Fix rounds converge or stop.** A findings ledger gives every finding an id, a recheck answers each by id, and the plugin's hooks refuse a fourth round, a round after one that fixed nothing, a third round not on opus, and any push or merge by a plugin agent; a turn ending while a ledger is open is held once, with what is due. What is left goes under Still open in the pull request. Needs Node 22.18 or later. (#87)
+- **The ledger records the checking agents' reports itself**, when each finishes, and carries each open ledger's next step through a compaction and into the session that resumes. (#87)
+- **`/sdlc:build` uses Claude Code's built-ins:** `/security-review` before the security reviewer, the LSP tool in the writing and checking agents, the Monitor tool to wait for CI, and a push notification when the run needs the user or the pull request is ready. (#87)
 
 ### Changed
 
-- **`/sdlc:build` fixes through a fresh fixer per round, and `/sdlc:review` caps rounds at three per node** instead of two and four, both stopping as soon as a round fixes nothing. `/sdlc:review` fixes only threads from the repository's own members; any other is listed for the user.
-- **The design skills and agents ship as the `ds` plugin**, installed with `claude plugin install ds@agent-sdlc`. They were an APM package deployed into each project, so every project carried its own copy. The namespace replaces the `design` in their names: `/ds:handoff`, `/ds:adopt`, `/ds:repo`, `/ds:adopt-shared-release` and the `curator` agent. The plugin is not named `design`, which Anthropic's knowledge-work marketplace already uses for a plugin with its own `design-handoff` skill. `figma` joins them, reading its token from `FIGMA_TOKEN` and its script through the skill's own directory.
-- **`/sdlc:build`'s design gate stops when a project with a design section lacks the `ds` plugin**, naming the install command, rather than reaching for another plugin's skill of a similar name.
-- **Each plugin has its own README** listing its skills and agents; the root README indexes the plugins and keeps the template.
-- **The delivery pipeline ships as the `sdlc` plugin**, with the `tracker-` prefix dropped: `/sdlc:plan`, `/sdlc:build`, `/sdlc:amend`, `/sdlc:review`, `/sdlc:close`, `/sdlc:pause`, `/sdlc:resume`, `/sdlc:release`, `/sdlc:roadmap`, plus `/sdlc:git-push` and `/sdlc:template-feedback`. It was a set of user-level skills each machine copied in, with no namespace or version. Each description now says only when to use the skill, and the workflow-run sections of pause and resume load on demand from their `references/`.
-- **`/sdlc:build` takes a ticket, or an epic's next batch, to a reviewed and walked pull request, then closes it once merged.** An independent agent asks what the tickets leave open before any code, a design gate parks the lines an undrawn surface needs, and each ticket gets a fresh builder that reads the path-scoped rules for what it writes and a fresh checker. An epic's tickets are built one after another on one branch: tickets built in parallel could not see each other's code.
-- **A test earns its place by the realistic mistake that fails it.** `/sdlc:plan` and `/sdlc:amend` name that mistake beside each rule test and cut one with none, `/sdlc:review` reports a test no realistic mistake fails as a finding whose fix is deleting it, and the roadmap's audit sweeps each subsystem's checks.
-- **`/sdlc:review` splits a change too large for one reader** into one fresh reviewer per pull request, and fixes findings in several repositories with one fixer per repository.
-- **`/sdlc:close` writes a ticket's "How to test it" section**, so a person can verify the ticket by hand.
-- **The roadmap's audit runs one subagent per subsystem, refuted in the session,** in place of its own workflow.
+- **`/sdlc:build` fixes through a fresh fixer per round, and `/sdlc:review` caps rounds at three per node** instead of two and four, both stopping as soon as a round fixes nothing. `/sdlc:review` fixes only threads from the repository's own members; any other is listed for the user. (#87)
+- **The design skills and agents ship as the `ds` plugin**, installed with `claude plugin install ds@agent-sdlc`. They were an APM package deployed into each project, so every project carried its own copy. The namespace replaces the `design` in their names: `/ds:handoff`, `/ds:adopt`, `/ds:repo`, `/ds:adopt-shared-release` and the `curator` agent. The plugin is not named `design`, which Anthropic's knowledge-work marketplace already uses for a plugin with its own `design-handoff` skill. `figma` joins them, reading its token from `FIGMA_TOKEN` and its script through the skill's own directory. (#84, #86)
+- **`/sdlc:build`'s design gate stops when a project with a design section lacks the `ds` plugin**, naming the install command, rather than reaching for another plugin's skill of a similar name. (#86)
+- **Each plugin has its own README** listing its skills and agents; the root README indexes the plugins and keeps the template. (#86)
+- **The delivery pipeline ships as the `sdlc` plugin**, with the `tracker-` prefix dropped: `/sdlc:plan`, `/sdlc:build`, `/sdlc:amend`, `/sdlc:review`, `/sdlc:close`, `/sdlc:pause`, `/sdlc:resume`, `/sdlc:release`, `/sdlc:roadmap`, plus `/sdlc:git-push` and `/sdlc:template-feedback`. It was a set of user-level skills each machine copied in, with no namespace or version. Each description now says only when to use the skill, and the workflow-run sections of pause and resume load on demand from their `references/`. (#84)
+- **`/sdlc:build` takes a ticket, or an epic's next batch, to a reviewed and walked pull request, then closes it once merged.** An independent agent asks what the tickets leave open before any code, a design gate parks the lines an undrawn surface needs, and each ticket gets a fresh builder that reads the path-scoped rules for what it writes and a fresh checker. An epic's tickets are built one after another on one branch: tickets built in parallel could not see each other's code. (#85)
+- **A test earns its place by the realistic mistake that fails it.** `/sdlc:plan` and `/sdlc:amend` name that mistake beside each rule test and cut one with none, `/sdlc:review` reports a test no realistic mistake fails as a finding whose fix is deleting it, and the roadmap's audit sweeps each subsystem's checks. (#85)
+- **`/sdlc:review` splits a change too large for one reader** into one fresh reviewer per pull request, and fixes findings in several repositories with one fixer per repository. (#85)
+- **`/sdlc:close` writes a ticket's "How to test it" section**, so a person can verify the ticket by hand. (#85)
+- **The roadmap's audit runs one subagent per subsystem, refuted in the session,** in place of its own workflow. (#84)
 
 ### Removed
 
-- **The APM package:** `.apm/` and `apm.yml`.
-- **The batch, review, fix and audit workflows.** `/sdlc:build` builds an epic one ticket at a time, `/sdlc:review` splits a large change by pull request, and the roadmap runs its audit with one subagent per subsystem.
+- **The APM package:** `.apm/` and `apm.yml`. (#84)
+- **The batch, review, fix and audit workflows.** `/sdlc:build` builds an epic one ticket at a time, `/sdlc:review` splits a large change by pull request, and the roadmap runs its audit with one subagent per subsystem. (#85)
 
 ## [1.0.6] - 2026-11-15
 
@@ -242,7 +244,10 @@ First tagged release of the AI-engineering template — the agent-driven workflo
 - **Skills** — `epic` (turn a design doc into a phased GitHub epic, shipped one ticket at a time) and `template-feedback` (raise a reusable, project-agnostic improvement back to this upstream template).
 - **MIT license** and project README.
 
-[Unreleased]: https://github.com/dsaenztagarro/agent-sdlc/compare/v1.0.4...HEAD
+[Unreleased]: https://github.com/dsaenztagarro/agent-sdlc/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/dsaenztagarro/agent-sdlc/compare/v1.0.6...v2.0.0
+[1.0.6]: https://github.com/dsaenztagarro/agent-sdlc/compare/v1.0.5...v1.0.6
+[1.0.5]: https://github.com/dsaenztagarro/agent-sdlc/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/dsaenztagarro/agent-sdlc/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/dsaenztagarro/agent-sdlc/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/dsaenztagarro/agent-sdlc/compare/v1.0.1...v1.0.2
