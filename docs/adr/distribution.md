@@ -44,6 +44,14 @@ A GitHub issue belongs to one repository, so a ticket changes that repository al
 One checkout stays a first-class place to start, since most projects are one repository and a parent folder would buy them nothing.
 Every skill that takes an item reads it through one script, `item.mts`, which refuses an argument it cannot use with every accepted form, or redirects a pull request passed for a ticket to the right command.
 
+### Items resolve through a tracker port and a forge port
+
+The resolver, `resolver.mts`, names no provider: it calls a tracker for tickets and a forge for pull requests, the two interfaces in `ports.mts`, and a test holds it to that.
+GitHub implements both ports through `gh`; Jira implements the tracker over its REST API with Node's own `fetch`, taking the site and credentials from `JIRA_BASE_URL`, `JIRA_EMAIL` and `JIRA_API_TOKEN`, with no default.
+Two ports, not one, because Jira is only a tracker: a Jira ticket's pull requests still live on a forge, and are found by its key in their bodies.
+So the same pipeline runs a project whose tickets live in GitHub Issues and one whose tickets live in Jira, and another tracker joins as one more adapter.
+The adapters are scripts, so they call CLIs and REST, never an MCP server: only the model can call MCP tools, and a resolver must answer the same way whatever the model does. The skills keep the Atlassian MCP server or `acli` for the edits the model itself makes.
+
 ### The namespace replaces the prefix
 
 The plugin's name already says what a skill belongs to, so a skill drops the prefix it carried at user level: `/sdlc:plan`, not `/sdlc:tracker-plan`.
@@ -92,7 +100,7 @@ A workflow stage that a later stage, or the calling session, already covers is r
 ## Left open
 
 - **A plugin per concern, such as a separate `git` or `release` plugin.** Reopens when a project wants one of the pipeline's skills without the rest.
-- **A forge other than GitHub.** The skills and `item.mts` drive `gh`; an issue in Jira is resolved, but its pull requests are GitHub's. Reopens when an adopter on another forge asks.
+- **A forge other than GitHub.** The forge port has one adapter, GitHub's, and the skills drive `gh`; another forge needs its adapter and the skills' forge lines. Reopens when an adopter on another forge asks.
 - **Hooks that enforce the pipeline's order:** no pull request before the checks finished, no push before the gate is green. A push guard is only as sound as the gate result it reads, and the gate is a command in each project's `AGENTS.md` that records nothing; until then the forge holds the order, with branch protection, required checks and draft pull requests. Reopens when `sdlc` has a gate that records its own result against HEAD.
 
 ## References

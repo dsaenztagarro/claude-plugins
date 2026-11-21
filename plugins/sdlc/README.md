@@ -67,9 +67,17 @@ acme/web
 | `<folder>#12` | issue or pull request 12 of that sub-folder's origin | in a workspace |
 | `owner/repo#12` | that repository's issue or pull request | anywhere |
 | `https://github.com/owner/repo/issues/12`, `…/pull/12` | that item | anywhere |
-| `PROJ-123`, or its Jira browse URL | that Jira issue | when an `AGENTS.md` here names the project `PROJ` |
+| `PROJ-123`, or its Jira browse URL | that Jira issue | when an `AGENTS.md` line here names the Jira project `PROJ`, and `JIRA_BASE_URL`, `JIRA_EMAIL` and `JIRA_API_TOKEN` are set |
 
 Anything else is refused with this table. A wrong kind is redirected to the right command: a pull request passed to `/sdlc:build` names `/sdlc:review` for it and `/sdlc:build` for the ticket it closes, and a ticket passed to `/sdlc:review` with no pull request yet names `/sdlc:build`. A bare number in a workspace is ambiguous, so it names every `<folder>#12` that exists. With no argument, `/sdlc:build` proposes the ticket your branch names, the ticket of an open pause note, and the roadmap's next batch, and asks.
+
+### Trackers
+
+Tickets live in GitHub Issues by default, and pull requests always live on GitHub.
+A project whose tickets live in Jira says so in its `AGENTS.md`, on a line naming the Jira project (`Tickets live in the Jira project SHOP.`), and the machine sets `JIRA_BASE_URL` (the site, such as `https://acme.atlassian.net`), `JIRA_EMAIL` and `JIRA_API_TOKEN`.
+A Jira ticket changes the repository of the checkout whose `AGENTS.md` names its project, unless its `### Repositories` section lists others, and its pull requests are the ones whose body closes or carries its key (`Closes SHOP-41`, `Part of SHOP-41`).
+
+The scripts reach each provider through an adapter behind two ports, a tracker for tickets and a forge for pull requests, so another tracker joins as one more adapter.
 
 ### Every combination, with what to type
 
