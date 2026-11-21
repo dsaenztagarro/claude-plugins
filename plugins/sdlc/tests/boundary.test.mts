@@ -33,3 +33,8 @@ test('no file the plugins ship names a home path, another forge or a hard-coded 
   });
   expect(found).toEqual([]);
 });
+
+test('the core names no provider; only adapters do', () => {
+  const core = fs.readFileSync(path.join(plugins, 'sdlc', 'scripts', 'resolver.mts'), 'utf-8');
+  expect(core.match(/github|\bgh\b|jira|atlassian|bitbucket|gitlab/gi) ?? []).toEqual([]);
+});
