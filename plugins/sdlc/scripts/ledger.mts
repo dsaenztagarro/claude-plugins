@@ -217,9 +217,12 @@ function toplevel(cwd: string): string {
   }
 }
 
+/** A key names one folder under `.sdlc/runs`, even when it is an `owner/repo#N` reference: the hooks read only its children. */
+const folderOf = (key: string) => key.replace(/[\\/]/g, '-');
+
 export function start(cwd: string, key: string): Ledger {
   const base = root(cwd) ?? toplevel(cwd);
-  const folder = path.join(base, RUNS, key);
+  const folder = path.join(base, RUNS, folderOf(key));
   fs.mkdirSync(folder, { recursive: true });
   fs.writeFileSync(path.join(base, '.sdlc', '.gitignore'), '*\n');
   fs.appendFileSync(path.join(folder, 'ledger.jsonl'), `${JSON.stringify({ at: new Date().toISOString(), event: 'start', key })}\n`);
@@ -228,8 +231,8 @@ export function start(cwd: string, key: string): Ledger {
 
 export function find(cwd: string, key: string): Ledger | null {
   const base = root(cwd);
-  if (base === null || !fs.existsSync(path.join(base, RUNS, key, 'ledger.jsonl'))) return null;
-  return new Ledger(path.join(base, RUNS, key));
+  if (base === null || !fs.existsSync(path.join(base, RUNS, folderOf(key), 'ledger.jsonl'))) return null;
+  return new Ledger(path.join(base, RUNS, folderOf(key)));
 }
 
 /** The active ledgers this session owns. */
