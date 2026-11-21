@@ -23,7 +23,7 @@ The argument is a pull request, a ticket or an epic, in any form `node ${CLAUDE_
 
 - **A pull request:** review that one.
 - **A ticket:** its pull requests are the `prs` the resolver printed, and on Jira the issue's development panel.
-- **An epic:** the open pull requests of its children.
+- **An epic:** the open pull requests of its children, which the resolver prints as its `prs`.
 - **Nothing:** use the pull request of the current branch: `gh pr view --json number,url`. GitHub is the forge this plugin drives.
 
 With no open pull request, stop and say so. A review needs a change to comment on, and there is none to review yet.

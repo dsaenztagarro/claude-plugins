@@ -57,6 +57,8 @@ export interface GitHubItem {
   prs?: string[];
   /** For a closed issue resolved for build: the merged pull requests that closed it. */
   merged?: string[];
+  /** For an epic: its sub-issues. */
+  children?: string[];
 }
 export interface JiraItem { tracker: 'jira'; key: string; folder: string; repositories: string[] }
 export type Item = GitHubItem | JiraItem;
@@ -178,10 +180,22 @@ function closingRefs(gh: Gh, repo: string, number: number): string[] {
 function pullRequestsFor(cwd: string, gh: Gh, item: { repo: string; number: number; repositories: string[] }, state: 'open' | 'merged'): string[] {
   const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return item.repositories.flatMap((repo) => {
-    const ticket = repo === item.repo ? `(?:${escape(item.repo)})?#${item.number}` : `${escape(item.repo)}#${item.number}`;
+    const named = `(?:https://github\\.com/${escape(item.repo)}/issues/|${escape(item.repo)}#)${item.number}`;
+    const ticket = repo === item.repo ? `(?:${named}|#${item.number})` : named;
     const carries = new RegExp(`\\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|part of)\\s+${ticket}(?!\\d)`, 'i');
     const prs = JSON.parse(gh(['pr', 'list', '-R', repo, '--state', state, '--search', `${item.number} in:body`, '--json', 'number,body'])) as { number: number; body: string }[];
     return prs.filter((pr) => carries.test(pr.body)).map((pr) => prRef(cwd, repo, pr.number));
+  });
+}
+
+interface Child { repo: string; number: number; repositories: string[] }
+
+/** An epic's children, from GitHub's sub-issues; a ticket has none. */
+function subIssues(gh: Gh, repo: string, number: number): Child[] {
+  const children = JSON.parse(gh(['api', `repos/${repo}/issues/${number}/sub_issues`])) as { number: number; body?: string | null; repository_url: string }[];
+  return children.map((child) => {
+    const own = child.repository_url.replace(/^.*\/repos\//, '');
+    return { repo: own, number: child.number, repositories: repositories(own, child.body ?? '') };
   });
 }
 
@@ -225,12 +239,19 @@ export function resolve(arg: string, options: { cwd: string; gh: Gh; for?: Purpo
     }
     return item;
   }
+  const children = subIssues(gh, repo, item.number);
+  if (children.length) {
+    item.children = children.map((child) => prRef(cwd, child.repo, child.number));
+    item.repositories = [...new Set([...item.repositories, ...children.flatMap((child) => child.repositories)])];
+  }
   if (options.for === 'build' && item.state === 'closed') {
     item.merged = pullRequestsFor(cwd, gh, item, 'merged');
     if (!item.merged.length) throw new Error(`${ref} is closed: nothing to build`);
   }
   if (options.for === 'review') {
-    item.prs = pullRequestsFor(cwd, gh, item, 'open');
+    item.prs = children.length
+      ? children.flatMap((child) => pullRequestsFor(cwd, gh, child, 'open'))
+      : pullRequestsFor(cwd, gh, item, 'open');
     if (!item.prs.length) throw new Error(`${ref} has no pull request yet: /sdlc:build ${ref} builds one`);
   }
   return item;

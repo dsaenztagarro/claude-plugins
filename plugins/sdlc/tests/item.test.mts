@@ -23,7 +23,7 @@ function checkout(dir: string, origin: string, agents?: string): string {
   return dir;
 }
 
-interface Remote { kind: 'issue' | 'pr'; state?: 'open' | 'closed'; body?: string; closes?: string[] }
+interface Remote { kind: 'issue' | 'pr'; state?: 'open' | 'closed'; body?: string; closes?: string[]; children?: string[] }
 
 /** Pull requests by repository, each with its state and body, as `gh pr list` searches them. */
 type Pulls = Record<string, { number: number; state: 'open' | 'merged'; body: string }[]>;
@@ -31,6 +31,13 @@ type Pulls = Record<string, { number: number; state: 'open' | 'merged'; body: st
 /** A fake `gh` answering the three calls the resolver makes, from a table keyed `owner/repo#n`. */
 function fakeGh(remote: Record<string, Remote>, pulls: Pulls = {}): Gh {
   return (args) => {
+    const children = /^repos\/([^/]+\/[^/]+)\/issues\/(\d+)\/sub_issues$/.exec(args[1] ?? '');
+    if (args[0] === 'api' && children) {
+      return JSON.stringify((remote[`${children[1]}#${children[2]}`]?.children ?? []).map((ref) => {
+        const [owner, name, n] = ref.split(/[/#]/);
+        return { number: Number(n), body: remote[ref]?.body ?? '', repository_url: `https://api.github.com/repos/${owner}/${name}` };
+      }));
+    }
     const issue = /^repos\/([^/]+\/[^/]+)\/issues\/(\d+)$/.exec(args[1] ?? '');
     if (args[0] === 'api' && issue) {
       const item = remote[`${issue[1]}#${issue[2]}`];
@@ -73,12 +80,15 @@ const gh = fakeGh({
   'acme/api#20': { kind: 'pr', closes: ['#12', 'acme/web#3'] },
   'acme/api#30': { kind: 'issue', body: 'Spans two.\n\n### Repositories\n\nacme/api\nacme/web\n\n### Tests\n' },
   'acme/api#5': { kind: 'issue', state: 'closed' },
+  'acme/api#50': { kind: 'issue', children: ['acme/api#12', 'acme/api#30'] },
+  'acme/api#14': { kind: 'issue' },
 }, {
   'acme/api': [
     { number: 40, state: 'open', body: '## Sequence\n\n- Ticket: #12\n\nCloses #12' },
     { number: 41, state: 'open', body: '## Sequence\n\n- Ticket: #11\n- Next: #8, the next ticket\n\nCloses #11' },
     { number: 42, state: 'open', body: 'Part of #30' },
     { number: 39, state: 'merged', body: 'Closes #5' },
+    { number: 43, state: 'open', body: 'Closes https://github.com/acme/api/issues/14' },
   ],
   'acme/web': [{ number: 7, state: 'open', body: 'Closes acme/api#30' }],
 });
@@ -149,6 +159,14 @@ describe('an argument', () => {
     expect(() => resolve('#8', { cwd: api(), gh, for: 'review' })).toThrow('#8 has no pull request yet');
   });
 
+  test('a pull request that closes its ticket by URL is its pull request', () => {
+    expect(resolve('#14', { cwd: api(), gh, for: 'review' })).toMatchObject({ prs: ['#43'] });
+  });
+
+  test("an epic's pull requests are its children's, since none closes the epic", () => {
+    expect(resolve('#50', { cwd: api(), gh, for: 'review' })).toMatchObject({ children: ['#12', '#30'], prs: ['#40', '#42', 'acme/web#7'] });
+  });
+
   test("a multi-repository ticket's pull requests are found in every repository it touches", () => {
     expect(resolve('api#30', { cwd: work, gh, for: 'review' })).toMatchObject({ prs: ['acme/api#42', 'acme/web#7'] });
   });
@@ -171,6 +189,10 @@ describe('the repositories a ticket touches', () => {
   test('a ticket with no Repositories section touches only its own repository', () => {
     expect(repositories('acme/api', 'Done when the list sorts.\n\n### Tests\n')).toEqual(['acme/api']);
     expect(resolve('#8', { cwd: api(), gh })).toMatchObject({ repositories: ['acme/api'] });
+  });
+
+  test("an epic touches every repository its children touch", () => {
+    expect(resolve('#50', { cwd: api(), gh })).toMatchObject({ repositories: ['acme/api', 'acme/web'] });
   });
 
   test('a Repositories section lists every repository the ticket touches', () => {
