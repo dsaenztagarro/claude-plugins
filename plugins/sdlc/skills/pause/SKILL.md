@@ -11,7 +11,7 @@ Write that onto the ticket, so `/sdlc:resume` can lead with it tomorrow and the 
 
 ## 1. Find the ticket
 
-- Use the ticket the work is for: the one named in the conversation, the branch name, or recent commits (`#N`).
+- Use the ticket the work is for: the one named in the conversation, resolved with `node ${CLAUDE_PLUGIN_ROOT}/scripts/item.mts resolve <argument>`; the one `node ${CLAUDE_PLUGIN_ROOT}/scripts/item.mts from-branch <branch>` reads from the branch name; or recent commits (`#N`).
 - **Work spanning several tickets,** such as planning an epic, pauses on the epic.
 - **Work spanning several epics,** such as parallel batches of a roadmap, pauses on the issue they share: the roadmap, or the epic above them.
 - **Work with no ticket** gets a proposed one — a title and a two-line body — filed only when the user confirms. A note with nowhere to live is lost.

@@ -9,7 +9,7 @@ model: sonnet
 
 The brief gives the ticket, the worktree and its base, the tickets already built on the branch, the design pages and parked lines, and any decision to record.
 
-- **Before writing or editing a file, read every `.claude/rules/*.md` whose `paths:` matches it, and the skill `AGENTS.md`'s routing table names for that kind of work, and follow them.** A path-scoped rule loads when a matching file is read, and a file created without reading a neighbour never sees it.
+- **Before writing or editing a file, read every `.claude/rules/*.md` whose `paths:` matches it, and the skill `AGENTS.md`'s routing table names for that kind of work, and follow them.** A skill named as `<plugin>:<skill>` belongs to another plugin, such as a product's own; invoke it by that name. A path-scoped rule loads when a matching file is read, and a file created without reading a neighbour never sees it.
 - Read the ticket and its comments, including every `QA:` note: apply each or state why not.
 - Write the tests the Tests section names, by those names; see them fail; implement; mutation-check the ones the ticket names.
 - Amend the theme's decision record for a decision that clears its bar.

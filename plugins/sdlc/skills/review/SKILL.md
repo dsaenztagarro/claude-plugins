@@ -1,7 +1,7 @@
 ---
 name: review
 description: "Review a pull request, or a ticket's or epic's pull requests, prove each finding by walking the running product, fix what pays for itself, and post the rest on the pull request. Use when a change is complete, before merging."
-argument-hint: "<PR# | ticket | epic> [level]"
+argument-hint: "[#N | <folder>#N | owner/repo#N | URL | PROJ-123] [level]"
 ---
 
 # Review a pull request on the pull request
@@ -19,18 +19,18 @@ The same holds for fixing: a fix is worth the failure it prevents, weighed again
 
 ## 1. Find the pull request
 
-The argument is a pull request (number or URL), a ticket or epic key, or nothing.
+The argument is a pull request, a ticket or an epic, in any form `node ${CLAUDE_PLUGIN_ROOT}/scripts/item.mts resolve --for review <argument>` accepts, or nothing. On exit 2, show its message, which names the accepted forms or `/sdlc:build` for a ticket with no pull request yet, and stop.
 
 - **A pull request:** review that one.
-- **A ticket:** its pull requests are the ones that close it: `gh pr list --state all --search "<N> in:body"`, and on Jira the issue's development panel.
+- **A ticket:** its pull requests are the `prs` the resolver printed, and on Jira the issue's development panel.
 - **An epic:** the open pull requests of its children.
-- **Nothing:** use the pull request of the current branch: `gh pr view --json number,url`, or the forge's equivalent.
+- **Nothing:** use the pull request of the current branch: `gh pr view --json number,url`. GitHub is the forge this plugin drives.
 
 With no open pull request, stop and say so. A review needs a change to comment on, and there is none to review yet.
 
-## 2. Review: pick the path by size, not by forge
+## 2. Review: pick the path by size
 
-**Direct review — the default.** One pull request, or one ticket whose work sits in one or two pull requests, whatever the forge.
+**Direct review — the default.** One pull request, or one ticket whose work sits in one or two pull requests.
 
 1. Read the requirements once: the ticket's done-when and its Tests section. They are already the catalogue; do not rebuild one.
 2. Read the whole diff (`git diff <base>...HEAD`) and, around it, only the code the diff's risky branches depend on: a changed query, a new constraint and every writer it binds, a filter whose callers changed meaning, a removed reader's callers.
@@ -98,7 +98,7 @@ A thread a person left on the pull request is a finding of node `threads` when i
 
 ## 6. Where each kept finding goes
 
-Post a round's kept findings through the forge: on GitHub one review, `gh api repos/<owner>/<repo>/pulls/<n>/reviews` with a comments array; on another forge, one inline comment per finding through its CLI or API, then one summary comment. Each carries the claim, its reproduction, its marks and whether it will be fixed.
+Post a round's kept findings as one review, `gh api repos/<owner>/<repo>/pulls/<n>/reviews` with a comments array. Each carries the claim, its reproduction, its marks and whether it will be fixed.
 
 - **A line in the diff:** an inline comment on that line, on the pull request.
 - **No line in the diff** (a missing test, a requirement not built): the round's summary. The ticket gets a `QA:` comment only when there is no pull request yet.

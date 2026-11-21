@@ -11,6 +11,8 @@ Several tickets are closed one at a time, each against its own evidence, and rep
 
 ## 1. Read
 
+Each ticket named resolves with `node ${CLAUDE_PLUGIN_ROOT}/scripts/item.mts resolve <argument>`; on exit 2, show its message and stop.
+
 - The ticket's done-when, Tests section, verification level and procedure, parent epic, and the pull requests or commits that did the work.
 - The comments that resolved its rows, when its done-when is a table resolved in comments.
 - **Close against the merged default branch,** never a feature branch: the evidence is about what shipped.
