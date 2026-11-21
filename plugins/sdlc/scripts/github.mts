@@ -8,11 +8,12 @@ import type { Forge, Place, Ticket, Tracker } from './ports.mts';
 const ORIGIN = /github\.com[:/]([^/\s]+)\/([^/\s]+?)(?:\.git)?\/?$/;
 const URL_ITEM = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)(?:[/?#].*)?$/;
 const ID = /^([\w.-]+\/[\w.-]+)#(\d+)$/;
-/** An issue number a branch name starts with, or starts a path segment with: `91-slug`, `feat/91-slug`, `issue-91`. */
-const BRANCH_NUMBERS = /(?:^|\/)(?:issue-|gh-)?(\d+)(?=[-_/]|$)/g;
+/** An issue number a branch name starts a segment with (`91-slug`, `feat/91-slug`, `worktree-issue-91`), never a key's (`SHOP-41-slug`). */
+const BRANCH_NUMBERS = /(?:^|[/_-])(?:issue-|gh-)?(?<![A-Z][A-Z0-9]*-)(\d+)(?=[-_/]|$)/g;
 /** Another tracker's key, as a pull request carries it: `PROJ-123`. */
 const KEY = /^[A-Z][A-Z0-9]+-\d+$/;
-const KEYS_CLOSED = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|part of)\s+([A-Z][A-Z0-9]+-\d+)\b/gi;
+/** The verbs are any case, the key upper case only, so "fixes utf-8" names no ticket. */
+const KEYS_CLOSED = /\b(?:[Cc]lose[sd]?|[Ff]ix(?:e[sd])?|[Rr]esolve[sd]?|[Pp]art of)\s+([A-Z][A-Z0-9]+-\d+)\b/g;
 const VERBS = '(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|part of)';
 /** How many pull requests a search reads: `gh` returns 30 by default, and a low ticket number appears in many bodies. */
 const SEARCH_LIMIT = 1000;
@@ -80,7 +81,7 @@ export function github(gh: Gh = realGh): Tracker & Forge {
       const pr = json<{ body?: string; closingIssuesReferences: { number: number; repository: { name: string; owner: { login: string } } }[] }>(
         ['pr', 'view', String(number), '-R', repo, '--json', 'closingIssuesReferences,body']);
       const issues = pr.closingIssuesReferences.map((ref) => `${ref.repository.owner.login}/${ref.repository.name}#${ref.number}`);
-      const keys = [...(pr.body ?? '').matchAll(KEYS_CLOSED)].map((m) => m[1]!.toUpperCase());
+      const keys = [...(pr.body ?? '').matchAll(KEYS_CLOSED)].map((m) => m[1]!);
       return [...new Set([...issues, ...keys])];
     },
 

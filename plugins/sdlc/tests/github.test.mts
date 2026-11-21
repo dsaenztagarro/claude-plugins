@@ -46,6 +46,7 @@ function fakeGh(remote: Record<string, Remote>, pulls: Pulls = {}): Gh {
 const hub = github(fakeGh({
   'acme/api#12': { kind: 'issue', body: 'Sorts the list.' },
   'acme/api#20': { kind: 'pr', closes: ['acme/api#12', 'acme/web#3'], body: 'Closes #12\nPart of SHOP-41' },
+  'acme/api#21': { kind: 'pr', closes: ['acme/api#12'], body: 'Closes #12. Fixes utf-8 decoding of titles.' },
   'acme/api#50': { kind: 'issue', children: ['acme/api#12', 'acme/web#4'] },
   'acme/web#4': { kind: 'issue', body: 'Styles it.' },
 }, {
@@ -72,6 +73,11 @@ describe('the GitHub tracker', () => {
     expect(hub.parse('SHOP-41')).toBeNull();
   });
 
+  test('a branch name yields the issue number it starts a segment with, never the number of a key', () => {
+    for (const branch of ['feat/91-workspace', 'issue-91', 'worktree-issue-91', 'fix-91-thing', 'dsaenz_91_x']) expect(hub.inBranch(branch)).toEqual(['#91']);
+    for (const branch of ['SHOP-41-checkout-copy', 'release/v2.0.0', 'main']) expect(hub.inBranch(branch)).toEqual([]);
+  });
+
   test('a missing issue or pull request is null, not an error', async () => {
     expect(await hub.lookup('acme/api#99999')).toBeNull();
     expect(await hub.lookup('acme/api#20')).toMatchObject({ kind: 'pr', state: 'open' });
@@ -85,6 +91,10 @@ describe('the GitHub tracker', () => {
 describe('the GitHub forge', () => {
   test("a pull request's closing references keep their repository", async () => {
     expect(await hub.closes({ repo: 'acme/api', number: 20 })).toEqual(['acme/api#12', 'acme/web#3', 'SHOP-41']);
+  });
+
+  test('a lower-case word after a closing verb is not read as a key', async () => {
+    expect(await hub.closes({ repo: 'acme/api', number: 21 })).toEqual(['acme/api#12']);
   });
 
   test("a pull request that only names a ticket as its neighbour is not that ticket's pull request", async () => {
