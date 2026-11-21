@@ -56,7 +56,8 @@ function fakeGh(remote: Record<string, Remote>, pulls: Pulls = {}): Gh {
     if (args[0] === 'pr' && args[1] === 'list') {
       const n = /^(\d+) in:body$/.exec(args[args.indexOf('--search') + 1]!)![1]!;
       const state = args[args.indexOf('--state') + 1];
-      return JSON.stringify((pulls[repo] ?? []).filter((pr) => pr.state === state && pr.body.includes(n)).map(({ number, body }) => ({ number, body })));
+      const limit = args.includes('--limit') ? Number(args[args.indexOf('--limit') + 1]) : 30;
+      return JSON.stringify((pulls[repo] ?? []).filter((pr) => pr.state === state && pr.body.includes(n)).slice(0, limit).map(({ number, body }) => ({ number, body })));
     }
     throw new Error(`unexpected gh ${args.join(' ')}`);
   };
@@ -82,6 +83,7 @@ const gh = fakeGh({
   'acme/api#5': { kind: 'issue', state: 'closed' },
   'acme/api#50': { kind: 'issue', children: ['acme/api#12', 'acme/api#30'] },
   'acme/api#14': { kind: 'issue' },
+  'acme/api#6': { kind: 'issue', state: 'closed' },
 }, {
   'acme/api': [
     { number: 40, state: 'open', body: '## Sequence\n\n- Ticket: #12\n\nCloses #12' },
@@ -89,6 +91,8 @@ const gh = fakeGh({
     { number: 42, state: 'open', body: 'Part of #30' },
     { number: 39, state: 'merged', body: 'Closes #5' },
     { number: 43, state: 'open', body: 'Closes https://github.com/acme/api/issues/14' },
+    ...Array.from({ length: 30 }, (_, i) => ({ number: 100 + i, state: 'merged' as const, body: `Gate: 6${i} tests passed` })),
+    { number: 200, state: 'merged', body: 'Closes #6' },
   ],
   'acme/web': [{ number: 7, state: 'open', body: 'Closes acme/api#30' }],
 });
@@ -174,6 +178,10 @@ describe('an argument', () => {
   test('a closed ticket has nothing to build, unless a merged pull request closed it, which build closes out', () => {
     expect(() => resolve('#7', { cwd: api(), gh, for: 'build' })).toThrow('#7 is closed: nothing to build');
     expect(resolve('#5', { cwd: api(), gh, for: 'build' })).toMatchObject({ state: 'closed', merged: ['#39'] });
+  });
+
+  test("a ticket's closing pull request is found past the first page of pull requests that mention its number", () => {
+    expect(resolve('#6', { cwd: api(), gh, for: 'build' })).toMatchObject({ merged: ['#200'] });
   });
 
   test("a branch name carrying one ticket yields it, and none or several yields a question", () => {

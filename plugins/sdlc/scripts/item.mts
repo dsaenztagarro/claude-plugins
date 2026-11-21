@@ -29,6 +29,8 @@ const JIRA_KEYS = /(?<![A-Za-z0-9])[A-Z][A-Z0-9]+-\d+(?!\d)/g;
 const BRANCH_NUMBERS = /(?:^|[/_-])(?:issue-|gh-)?(\d+)(?=[-_/]|$)/g;
 const REPOSITORIES = /^#{2,4}\s+Repositories\s*$([\s\S]*?)(?=^#{1,4}\s|(?![\s\S]))/m;
 const REPO = /^[\w.-]+\/[\w.-]+$/;
+/** How many pull requests a search reads: `gh` returns 30 by default, and a low ticket number appears in many bodies. */
+const SEARCH_LIMIT = 1000;
 
 export const FORMS = `Accepted forms:
   12, #12          issue or pull request 12 of this checkout's GitHub origin (in a checkout)
@@ -183,7 +185,7 @@ function pullRequestsFor(cwd: string, gh: Gh, item: { repo: string; number: numb
     const named = `(?:https://github\\.com/${escape(item.repo)}/issues/|${escape(item.repo)}#)${item.number}`;
     const ticket = repo === item.repo ? `(?:${named}|#${item.number})` : named;
     const carries = new RegExp(`\\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|part of)\\s+${ticket}(?!\\d)`, 'i');
-    const prs = JSON.parse(gh(['pr', 'list', '-R', repo, '--state', state, '--search', `${item.number} in:body`, '--json', 'number,body'])) as { number: number; body: string }[];
+    const prs = JSON.parse(gh(['pr', 'list', '-R', repo, '--state', state, '--search', `${item.number} in:body`, '--limit', String(SEARCH_LIMIT), '--json', 'number,body'])) as { number: number; body: string }[];
     return prs.filter((pr) => carries.test(pr.body)).map((pr) => prRef(cwd, repo, pr.number));
   });
 }
