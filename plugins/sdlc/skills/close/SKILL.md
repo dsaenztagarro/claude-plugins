@@ -1,6 +1,7 @@
 ---
 name: close
 description: "Close a finished ticket with evidence: each done-when line against a named test or real command output, live checks handed to the user. Use when a merged PR did not close its ticket, or when asked to mark a ticket done or close it."
+argument-hint: "<#N | <folder>#N | owner/repo#N | URL | PROJ-123>..."
 ---
 
 # Close a ticket with evidence

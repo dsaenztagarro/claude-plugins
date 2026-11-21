@@ -1,6 +1,7 @@
 ---
 name: plan
 description: "Publish a confirmed plan to the issue tracker (GitHub Issues or Jira) as a marked section of the epic, with the tickets it calls for. Use right after a plan is approved, or when asked to save, publish or update a plan or epic."
+argument-hint: "[#N | <folder>#N | owner/repo#N | URL | PROJ-123]"
 ---
 
 # Publish a plan to the tracker

@@ -1,6 +1,7 @@
 ---
 name: pause
 description: "Write a \"Where I stopped\" note on the in-progress ticket, and secure any workflow runs in flight, so another session or machine can resume. Use when stopping for the day, switching projects or machines, or asked to pause, park or checkpoint work."
+argument-hint: "[#N | <folder>#N | owner/repo#N | URL | PROJ-123]"
 ---
 
 # Pause work on a ticket
