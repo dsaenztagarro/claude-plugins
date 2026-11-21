@@ -23,10 +23,13 @@ function checkout(dir: string, origin: string, agents?: string): string {
   return dir;
 }
 
-interface Remote { kind: 'issue' | 'pr'; state?: 'open' | 'closed'; body?: string; closes?: string[]; prs?: number[] }
+interface Remote { kind: 'issue' | 'pr'; state?: 'open' | 'closed'; body?: string; closes?: string[] }
+
+/** Pull requests by repository, each with its state and body, as `gh pr list` searches them. */
+type Pulls = Record<string, { number: number; state: 'open' | 'merged'; body: string }[]>;
 
 /** A fake `gh` answering the three calls the resolver makes, from a table keyed `owner/repo#n`. */
-function fakeGh(remote: Record<string, Remote>): Gh {
+function fakeGh(remote: Record<string, Remote>, pulls: Pulls = {}): Gh {
   return (args) => {
     const issue = /^repos\/([^/]+\/[^/]+)\/issues\/(\d+)$/.exec(args[1] ?? '');
     if (args[0] === 'api' && issue) {
@@ -44,8 +47,9 @@ function fakeGh(remote: Record<string, Remote>): Gh {
       }) });
     }
     if (args[0] === 'pr' && args[1] === 'list') {
-      const n = /^(\d+) in:body$/.exec(args[args.indexOf('--search') + 1]!)![1];
-      return JSON.stringify((remote[`${repo}#${n}`]?.prs ?? []).map((number) => ({ number })));
+      const n = /^(\d+) in:body$/.exec(args[args.indexOf('--search') + 1]!)![1]!;
+      const state = args[args.indexOf('--state') + 1];
+      return JSON.stringify((pulls[repo] ?? []).filter((pr) => pr.state === state && pr.body.includes(n)).map(({ number, body }) => ({ number, body })));
     }
     throw new Error(`unexpected gh ${args.join(' ')}`);
   };
@@ -62,12 +66,21 @@ afterEach(() => fs.rmSync(work, { recursive: true, force: true }));
 
 const api = () => path.join(work, 'api');
 const gh = fakeGh({
-  'acme/api#12': { kind: 'issue', prs: [40] },
+  'acme/api#12': { kind: 'issue' },
   'acme/web#12': { kind: 'pr', closes: ['#9'] },
   'acme/api#7': { kind: 'issue', state: 'closed' },
   'acme/api#8': { kind: 'issue' },
   'acme/api#20': { kind: 'pr', closes: ['#12', 'acme/web#3'] },
   'acme/api#30': { kind: 'issue', body: 'Spans two.\n\n### Repositories\n\nacme/api\nacme/web\n\n### Tests\n' },
+  'acme/api#5': { kind: 'issue', state: 'closed' },
+}, {
+  'acme/api': [
+    { number: 40, state: 'open', body: '## Sequence\n\n- Ticket: #12\n\nCloses #12' },
+    { number: 41, state: 'open', body: '## Sequence\n\n- Ticket: #11\n- Next: #8, the next ticket\n\nCloses #11' },
+    { number: 42, state: 'open', body: 'Part of #30' },
+    { number: 39, state: 'merged', body: 'Closes #5' },
+  ],
+  'acme/web': [{ number: 7, state: 'open', body: 'Closes acme/api#30' }],
 });
 
 describe('where the session runs', () => {
@@ -101,9 +114,15 @@ describe('an argument', () => {
   });
 
   test("a Jira key resolves only when a checkout's AGENTS.md names its project", () => {
-    expect(resolve('SHOP-41', { cwd: work, gh })).toEqual({ tracker: 'jira', key: 'SHOP-41', folder: path.join(work, 'shop') });
+    expect(resolve('SHOP-41', { cwd: work, gh })).toEqual({ tracker: 'jira', key: 'SHOP-41', folder: path.join(work, 'shop'), repositories: ['acme/shop'] });
     expect(resolve('https://acme.atlassian.net/browse/SHOP-41', { cwd: work, gh })).toMatchObject({ key: 'SHOP-41' });
     expect(() => resolve('OPS-3', { cwd: work, gh })).toThrow(/no AGENTS\.md here names the Jira project OPS/);
+    expect(resolve('SHOP-41', { cwd: work, gh })).toMatchObject({ repositories: ['acme/shop'] });
+  });
+
+  test('a word in an AGENTS.md is not taken for a Jira project unless the line says Jira', () => {
+    fs.writeFileSync(path.join(api(), 'AGENTS.md'), '# Api\n\nThe API serves the web client.\n');
+    expect(() => resolve('API-3', { cwd: work, gh })).toThrow(/no AGENTS\.md here names the Jira project API/);
   });
 
   test('an unparseable argument is refused with every accepted form', () => {
@@ -123,11 +142,20 @@ describe('an argument', () => {
 
   test('an issue passed to review with no pull request names build', () => {
     expect(() => resolve('#8', { cwd: api(), gh, for: 'review' })).toThrow('#8 has no pull request yet: /sdlc:build #8 builds one');
-    expect(resolve('#12', { cwd: api(), gh, for: 'review' })).toMatchObject({ kind: 'issue', prs: [40] });
+    expect(resolve('#12', { cwd: api(), gh, for: 'review' })).toMatchObject({ kind: 'issue', prs: ['#40'] });
   });
 
-  test('a closed ticket has nothing to build', () => {
+  test("a pull request that only names a ticket as its neighbour is not that ticket's pull request", () => {
+    expect(() => resolve('#8', { cwd: api(), gh, for: 'review' })).toThrow('#8 has no pull request yet');
+  });
+
+  test("a multi-repository ticket's pull requests are found in every repository it touches", () => {
+    expect(resolve('api#30', { cwd: work, gh, for: 'review' })).toMatchObject({ prs: ['acme/api#42', 'acme/web#7'] });
+  });
+
+  test('a closed ticket has nothing to build, unless a merged pull request closed it, which build closes out', () => {
     expect(() => resolve('#7', { cwd: api(), gh, for: 'build' })).toThrow('#7 is closed: nothing to build');
+    expect(resolve('#5', { cwd: api(), gh, for: 'build' })).toMatchObject({ state: 'closed', merged: ['#39'] });
   });
 
   test("a branch name carrying one ticket yields it, and none or several yields a question", () => {

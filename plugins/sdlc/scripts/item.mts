@@ -53,10 +53,12 @@ export interface GitHubItem {
   repositories: string[];
   /** For a pull request: the tickets it closes, as references. */
   closes?: string[];
-  /** For an issue resolved for review: its open pull requests. */
-  prs?: number[];
+  /** For an issue resolved for review: its open pull requests, in every repository it touches. */
+  prs?: string[];
+  /** For a closed issue resolved for build: the merged pull requests that closed it. */
+  merged?: string[];
 }
-export interface JiraItem { tracker: 'jira'; key: string; folder: string }
+export interface JiraItem { tracker: 'jira'; key: string; folder: string; repositories: string[] }
 export type Item = GitHubItem | JiraItem;
 
 function git(dir: string, args: string[]): string | null {
@@ -169,21 +171,38 @@ function closingRefs(gh: Gh, repo: string, number: number): string[] {
   });
 }
 
-function openPullRequests(gh: Gh, repo: string, number: number): number[] {
-  const prs = JSON.parse(gh(['pr', 'list', '-R', repo, '--state', 'open', '--search', `${number} in:body`, '--json', 'number'])) as { number: number }[];
-  return prs.map((pr) => pr.number);
+/**
+ * The pull requests, in any of `repos`, that close or carry part of the ticket. A body that only names it, as a
+ * `## Sequence` neighbour does, is not one: the search matches any mention, so the body is read for a closing line.
+ */
+function pullRequestsFor(cwd: string, gh: Gh, item: { repo: string; number: number; repositories: string[] }, state: 'open' | 'merged'): string[] {
+  const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return item.repositories.flatMap((repo) => {
+    const ticket = repo === item.repo ? `(?:${escape(item.repo)})?#${item.number}` : `${escape(item.repo)}#${item.number}`;
+    const carries = new RegExp(`\\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|part of)\\s+${ticket}(?!\\d)`, 'i');
+    const prs = JSON.parse(gh(['pr', 'list', '-R', repo, '--state', state, '--search', `${item.number} in:body`, '--json', 'number,body'])) as { number: number; body: string }[];
+    return prs.filter((pr) => carries.test(pr.body)).map((pr) => prRef(cwd, repo, pr.number));
+  });
+}
+
+/** `#n` for a pull request of the checkout the session runs in, `owner/repo#n` otherwise. */
+function prRef(cwd: string, repo: string, number: number): string {
+  const top = toplevel(cwd);
+  return top && repoOf(top) === repo ? `#${number}` : `${repo}#${number}`;
 }
 
 function jira(cwd: string, key: string): JiraItem {
   const project = key.split('-')[0]!;
   const top = toplevel(cwd);
   const folders = top ? [top] : checkouts(cwd).map((name) => path.join(cwd, name));
+  const names = new RegExp(`\\b${project}\\b`);
   const folder = folders.find((dir) => {
     const agents = path.join(dir, 'AGENTS.md');
-    return fs.existsSync(agents) && new RegExp(`\\b${project}\\b`).test(fs.readFileSync(agents, 'utf-8'));
+    return fs.existsSync(agents) && fs.readFileSync(agents, 'utf-8').split('\n').some((line) => /jira/i.test(line) && names.test(line));
   });
   if (!folder) throw new Error(`no AGENTS.md here names the Jira project ${project}; start the session where the project's checkout is`);
-  return { tracker: 'jira', key, folder };
+  const repo = repoOf(folder);
+  return { tracker: 'jira', key, folder, repositories: repo ? [repo] : [] };
 }
 
 export function resolve(arg: string, options: { cwd: string; gh: Gh; for?: Purpose }): Item {
@@ -206,9 +225,12 @@ export function resolve(arg: string, options: { cwd: string; gh: Gh; for?: Purpo
     }
     return item;
   }
-  if (options.for === 'build' && item.state === 'closed') throw new Error(`${ref} is closed: nothing to build`);
+  if (options.for === 'build' && item.state === 'closed') {
+    item.merged = pullRequestsFor(cwd, gh, item, 'merged');
+    if (!item.merged.length) throw new Error(`${ref} is closed: nothing to build`);
+  }
   if (options.for === 'review') {
-    item.prs = openPullRequests(gh, repo, item.number);
+    item.prs = pullRequestsFor(cwd, gh, item, 'open');
     if (!item.prs.length) throw new Error(`${ref} has no pull request yet: /sdlc:build ${ref} builds one`);
   }
   return item;
