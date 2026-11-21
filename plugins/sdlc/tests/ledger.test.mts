@@ -86,6 +86,14 @@ describe('the ledger', () => {
     expect(fs.readFileSync(path.join(base, '.sdlc', '.gitignore'), 'utf-8')).toBe('*\n');
   });
 
+  test('a ledger started in a folder that is not a git checkout lives in that folder', () => {
+    const workspace = fs.realpathSync(folder());
+    expect(start(workspace, '12').folder).toBe(path.join(workspace, '.sdlc', 'runs', '12'));
+    const worktree = path.join(workspace, '.sdlc', 'runs', '12', 'ws', 'api');
+    fs.mkdirSync(worktree, { recursive: true });
+    expect(find(worktree, '12')?.key).toBe('12');
+  });
+
   test('next names the round due, and the last one on opus', () => {
     const ledger = start(folder(), '12');
     ledger.record('check', '- [high] a.rb:1: one');
