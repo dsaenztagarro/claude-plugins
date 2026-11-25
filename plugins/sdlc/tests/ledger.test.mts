@@ -18,16 +18,20 @@ const git = (dir: string, ...args: string[]) =>
   execFileSync('git', ['-C', dir, '-c', 'user.name=dev', '-c', 'user.email=dev@example.com', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', ...args],
     { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] });
 
-/** A ledger whose run has one worktree: a real repository with one commit. */
-function run(): { ledger: Ledger; worktree: string } {
-  const ledger = start(folder(), '12');
-  const worktree = path.join(ledger.folder, 'ws', 'api');
-  fs.mkdirSync(worktree, { recursive: true });
-  git(worktree, 'init', '-q');
-  fs.writeFileSync(path.join(worktree, 'a.rb'), 'total = 1\n');
-  git(worktree, 'add', '-A');
-  git(worktree, 'commit', '-qm', 'base');
-  return { ledger, worktree };
+/** A real repository with one commit, in a folder made for it. */
+function repository(dir: string): string {
+  fs.mkdirSync(dir, { recursive: true });
+  git(dir, 'init', '-q');
+  fs.writeFileSync(path.join(dir, 'a.rb'), 'total = 1\n');
+  git(dir, 'add', '-A');
+  git(dir, 'commit', '-qm', 'base');
+  return dir;
+}
+
+/** A ledger whose run has one worktree, started in `base`. */
+function run(base = folder()): { ledger: Ledger; worktree: string } {
+  const ledger = start(base, '12');
+  return { ledger, worktree: repository(path.join(ledger.folder, 'ws', 'api')) };
 }
 
 /** Open the node's next round and hand it to a fixer; the refusal when it may not open. */
@@ -132,6 +136,13 @@ describe('the ledger', () => {
     expect(forSession(workspace, 'session-1').map((ledger) => ledger.key)).toEqual(['acme-api#30']);
   });
 
+  test('a line of the ledger that cannot be read is skipped, and the rest still counts', () => {
+    const ledger = start(folder(), '12');
+    ledger.record('check', '- [high] a.rb:1: one');
+    fs.appendFileSync(path.join(ledger.folder, 'ledger.jsonl'), '{"at":"2026-01-01T00:00:00.000Z","event":"fin\n');
+    expect(find(path.dirname(path.dirname(path.dirname(ledger.folder))), '12')!.open().map((f) => f.id)).toEqual(['F1']);
+  });
+
   test('next names the round due', () => {
     const ledger = start(folder(), '12');
     ledger.record('check', '- [high] a.rb:1: one\n- [high] a.rb:2: two\n- [high] a.rb:3: three');
@@ -172,6 +183,16 @@ describe('a recheck', () => {
     const { added, ignored } = ledger.record('check', 'F1: fixed\nF2: open\n- [high] a.rb:9: found while rechecking');
     expect(added).toEqual([]);
     expect(ignored).toBe(1);
+    expect(ledger.of('finding').map((e) => e.id)).toEqual(['F1', 'F2', 'F3']);
+  });
+
+  test('a recheck recorded twice counts once, so its new finding stays unrecorded', () => {
+    const ledger = checked();
+    expect(fixRound(ledger)).toBeNull();
+    const report = 'F1: fixed\nF2: open\n- [high] a.rb:9: found while rechecking';
+    ledger.record('check', report);
+    const again = ledger.record('check', `${report}\n`);
+    expect(again.added).toEqual([]);
     expect(ledger.of('finding').map((e) => e.id)).toEqual(['F1', 'F2', 'F3']);
   });
 
@@ -219,6 +240,28 @@ describe('severity and verdicts', () => {
     ledger.record('check', '- [high] a.rb:1: one\n- [high] a.rb:2: two');
     ledger.record('verify', 'F1: refuted — the code already handles it\nF2: refuted — order_test.rb:12 covers it');
     expect(ledger.open().map((f) => f.id)).toEqual(['F1']);
+  });
+
+  test('a time, a port or a step number is not the file and line that refute a finding', () => {
+    const ledger = start(folder(), '12');
+    ledger.record('check', ['one', 'two', 'three', 'four', 'five'].map((what, i) => `- [high] a.rb:${i + 1}: ${what}`).join('\n'));
+    ledger.record('verify', [
+      'F1: refuted — I ran the suite at 10:42 and it passed',
+      'F2: refuted — see http://localhost:3000/orders',
+      'F3: refuted — step 2:3 of the ticket',
+      'F4: refuted — bin/setup:4 already creates it',
+      'F5: refuted — `order_test.rb:12` covers it',
+    ].join('\n'));
+    expect(ledger.open().map((f) => f.id)).toEqual(['F1', 'F2', 'F3']);
+  });
+
+  test('a refutation that does not count leaves a needs-design question standing', () => {
+    const ledger = start(folder(), '12');
+    ledger.record('check', '- [high] a.rb:1: one');
+    ledger.record('verify', 'F1: needs-design — does an empty basket get free shipping?');
+    ledger.record('verify', 'F1: refuted — the ticket says so');
+    expect(ledger.questions().map((f) => f.id)).toEqual(['F1']);
+    expect(fixRound(ledger)).toMatch(/nothing to fix/);
   });
 
   test('a needs-design finding never opens a fix round and is listed as a question', () => {
@@ -277,6 +320,18 @@ describe('progress is content that moved', { timeout: 30_000 }, () => {
     ledger.record('check', 'F1: fixed\nF2: open');
     expect(ledger.open().map((f) => f.id)).toEqual(['F2']);
     expect(fixRound(ledger)).toBeNull();
+  });
+
+  test("a ledger with no worktree of its own counts a fix made in another run's worktree", () => {
+    const checkout = repository(folder());
+    const { worktree } = run(checkout);
+    const review = start(checkout, 'pr-5');
+    review.record('review', '- [high] a.rb:1: one\n- [high] a.rb:2: two');
+    expect(fixRound(review, 'review')).toBeNull();
+    fs.writeFileSync(path.join(worktree, 'a.rb'), 'total = 2\n');
+    review.record('review', 'F1: fixed\nF2: open');
+    expect(review.open().map((f) => f.id)).toEqual(['F2']);
+    expect(fixRound(review, 'review')).toBeNull();
   });
 
   test("a git failure refuses the round in git's own words", () => {

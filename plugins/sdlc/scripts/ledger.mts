@@ -10,7 +10,7 @@
 // kept, three per node at most, and never verified, fixed or rechecked.
 //
 // The verifier answers an open finding by its id: `F<n>: holds`,
-// `F<n>: refuted — <file>:<line> ...`, which counts only with that location,
+// `F<n>: refuted — <file>:<line> ...`, which is ignored without that location,
 // or `F<n>: needs-design — <question>`, which keeps it out of the fix rounds
 // as a question for the user. The first report of a node after its fix round
 // is that round's recheck: `F<n>: fixed|open` count there, for the ids the
@@ -24,6 +24,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 export const RUNS = path.join('.sdlc', 'runs');
@@ -31,7 +32,8 @@ export const MAX_FIX_ROUNDS = 3;
 export const MAX_NOTES = 3;
 const FINDING = /^\s*-\s*\[(high|medium|low)\]\s+(.+?):\s+(.+?)\s*$/i;
 const ANSWER = /^\s*-?\s*(F\d+):\s*(fixed|open|holds|refuted|needs-design)\b[\s—–:-]*(.*?)\s*$/i;
-const LOCATION = /[\w./\\-]+:\d+/;
+/** A path and a line: a name with an extension, or a path with a folder, never a time, a port or a URL. */
+const LOCATION = /(?<![\w/:.-])(?:(?:[\w.-]+\/)+[\w.-]+|[\w-]+(?:\.[\w-]+)*\.[A-Za-z]\w*):\d+/;
 
 export type Event = { at: string; event: string } & Record<string, any>;
 export interface Finding {
@@ -80,7 +82,7 @@ export function contentHash(worktree: string): string {
 const isCheckout = (folder: string) => fs.existsSync(path.join(folder, '.git'));
 
 const folders = (parent: string): string[] =>
-  fs.readdirSync(parent, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => path.join(parent, entry.name)).sort();
+  !fs.existsSync(parent) ? [] : fs.readdirSync(parent, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => path.join(parent, entry.name)).sort();
 
 const sameTrees = (a: Trees, b: Trees) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
 
@@ -92,8 +94,15 @@ export class Ledger {
 
   constructor(folder: string) {
     this.folder = folder;
+    // A line cut short by a crash is skipped: one bad line must not fail every hook that reads the ledger.
     this.events = fs.readFileSync(path.join(folder, 'ledger.jsonl'), 'utf-8').split('\n').filter(Boolean)
-      .map((line) => JSON.parse(line) as Event);
+      .flatMap((line) => {
+        try {
+          return [JSON.parse(line) as Event];
+        } catch {
+          return [];
+        }
+      });
   }
 
   get key(): string {
@@ -195,6 +204,11 @@ export class Ledger {
    * adds findings, and only a verifier's verdict counts in it.
    */
   record(node: string, text: string): { added: Finding[]; answered: string[]; ignored: number; recheck: number | null } {
+    const report = createHash('sha256').update(text.trim()).digest('hex');
+    const rechecked = this.events.findLast((e) => (e.event === 'fix-round' || e.event === 'recheck') && e.node === node);
+    if (rechecked?.event === 'recheck' && rechecked.report === report) {
+      return { added: [], answered: [], ignored: rechecked.ignored, recheck: rechecked.round };
+    }
     const round = this.awaitingRecheck(node);
     const added: Finding[] = [];
     const answered: string[] = [];
@@ -210,8 +224,8 @@ export class Ledger {
         if (!this.open().some((f) => f.id === id) || answered.includes(id)) continue;
         if (round && !round.ids.includes(id)) continue;
         if (!round && (verdict === 'fixed' || verdict === 'open')) continue;
-        if (verdict === 'refuted' && !LOCATION.test(evidence)) verdict = 'holds';
-        if (verdict === 'needs-design' && !evidence) verdict = 'holds';
+        if (verdict === 'refuted' && !LOCATION.test(evidence)) continue;
+        if (verdict === 'needs-design' && !evidence) continue;
         if (verdict === 'fixed' && !(moved ??= this.movedSince(round!))) verdict = 'open';
         this.append('answer', { id, verdict, ...(verdict === 'needs-design' ? { question: evidence } : evidence ? { evidence } : {}) });
         answered.push(id);
@@ -231,7 +245,7 @@ export class Ledger {
       this.append('finding', { id, node, severity, where, what });
       added.push({ id, node, severity, where, what, open: severity !== 'low', ...(severity === 'low' ? { note: true as const } : {}) });
     }
-    if (round) this.append('recheck', { node, round: round.round, ignored });
+    if (round) this.append('recheck', { node, round: round.round, ignored, report });
     return { added, answered, ignored, recheck: round ? round.round as number : null };
   }
 
@@ -250,12 +264,20 @@ export class Ledger {
     return last?.event === 'fix-round' ? { ...last, ids: last.ids ?? this.open(node).map((f) => f.id) } : null;
   }
 
-  /** The run's worktrees, `ws/<repo>` below the ledger; a run with none works in the checkout that holds the ledger, or in the workspace's checkouts. */
+  /**
+   * Where this ledger's fixers work: the run's own worktrees, `ws/<repo>` below it. A ledger with none, such as a
+   * review's or a walk's, fixes where the change already is: every other run's worktrees, and the checkout that
+   * holds the ledger or the workspace's checkouts.
+   */
   worktrees(): string[] {
-    const ws = path.join(this.folder, 'ws');
-    if (fs.existsSync(ws) && folders(ws).length) return folders(ws);
-    const base = path.dirname(path.dirname(path.dirname(this.folder)));
-    return isCheckout(base) ? [base] : folders(base).filter(isCheckout);
+    const own = folders(path.join(this.folder, 'ws'));
+    if (own.length) return own;
+    const runs = path.dirname(this.folder);
+    const base = path.dirname(path.dirname(runs));
+    return [
+      ...folders(runs).flatMap((run) => folders(path.join(run, 'ws'))).filter(isCheckout),
+      ...(isCheckout(base) ? [base] : folders(base).filter(isCheckout)),
+    ];
   }
 
   /** Each worktree's content hash; throws GitFailure when git cannot say. */
