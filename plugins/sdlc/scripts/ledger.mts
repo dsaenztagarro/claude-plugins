@@ -12,10 +12,10 @@
 // The verifier answers an open finding by its id: `F<n>: holds`,
 // `F<n>: refuted — <file>:<line> ...`, which is ignored without that location,
 // or `F<n>: needs-design — <question>`, which keeps it out of the fix rounds
-// as a question for the user. The first report of a node after its fix round
-// that answers one of the round's ids is that round's recheck: `F<n>: fixed|open` count there, for the ids the
-// round carried, and a finding it adds is not recorded, so the set a loop
-// works on only shrinks. Only the session accepts a finding, leaving it
+// as a question for the user. A report that answers an id of its node's last
+// fix round is that round's recheck: `F<n>: fixed|open` count there, for
+// the ids the round carried, and a finding it adds is not recorded, so
+// the set a loop works on only shrinks. Only the session accepts a finding, leaving it
 // unfixed: it leaves the rounds and stays under Still open with its reason.
 //
 // A round records each worktree's content hash. One in which no content moved
@@ -205,19 +205,19 @@ export class Ledger {
   }
 
   /**
-   * Read a checking agent's output. The node's first report after its fix round is that round's recheck:
-   * its answers count for the ids the round carried, and a finding it adds is ignored. Any other report
-   * adds findings, and only a verifier's verdict counts in it.
+   * Read a checking agent's output. A report that answers an id of the node's last fix round `fixed` or `open`
+   * is that round's recheck, whole or in part, first or repeated: its answers count for the round's ids, and
+   * a finding the report adds is ignored. Any other report is a check: it adds findings, and only a verifier's
+   * verdict counts in it.
    */
   record(node: string, text: string): { added: Finding[]; answered: string[]; ignored: number; recheck: number | null } {
-    const rechecked = this.rechecked(node);
-    if (rechecked && text.split('\n').some((line) => {
+    const last = this.lastRound(node);
+    const ids: string[] = last ? last.ids ?? this.open(node).map((f) => f.id) : [];
+    const rechecks = text.split('\n').some((line) => {
       const answer = ANSWER.exec(line);
-      return answer !== null && /^(fixed|open)$/i.test(answer[2]!) && rechecked.ids.includes(answer[1]!.toUpperCase());
-    })) {
-      return { added: [], answered: [], ignored: rechecked.ignored, recheck: rechecked.round };
-    }
-    const round = this.awaitingRecheck(node);
+      return answer !== null && /^(fixed|open)$/i.test(answer[2]!) && ids.includes(answer[1]!.toUpperCase());
+    });
+    const round: Event | null = last && rechecks ? { ...last, ids } : null;
     const added: Finding[] = [];
     const answered: string[] = [];
     let ignored = 0;
@@ -253,8 +253,7 @@ export class Ledger {
       this.append('finding', { id, node, severity, where, what });
       added.push({ id, node, severity, where, what, open: severity !== 'low', ...(severity === 'low' ? { note: true as const } : {}) });
     }
-    // A report that answers none of the round's ids, such as an interrupted agent's, leaves the recheck still due.
-    if (round && answered.length) this.append('recheck', { node, round: round.round, ids: round.ids, ignored });
+    if (round && answered.length) this.append('recheck', { node, round: round.round, ignored });
     return { added, answered, ignored, recheck: round ? round.round as number : null };
   }
 
@@ -267,16 +266,10 @@ export class Ledger {
     return this.events.findLast((e) => e.event === 'fix-round' && e.node === node) ?? null;
   }
 
-  /** The node's last recheck when no fix round followed it, or null: a report that answers its ids again is that recheck recorded twice. */
-  rechecked(node: string): Event | null {
-    const last = this.events.findLast((e) => (e.event === 'fix-round' || e.event === 'recheck') && e.node === node);
-    return last?.event === 'recheck' && Array.isArray(last.ids) ? last : null;
-  }
-
-  /** The node's fix round whose recheck has not been recorded yet, or null. */
-  awaitingRecheck(node: string): Event | null {
-    const last = this.events.findLast((e) => (e.event === 'fix-round' || e.event === 'recheck') && e.node === node);
-    return last?.event === 'fix-round' ? { ...last, ids: last.ids ?? this.open(node).map((f) => f.id) } : null;
+  /** The ids a recheck has answered `fixed` or `open` since the node's last fix round. */
+  rechecked(node: string): string[] {
+    const from = this.events.findLastIndex((e) => e.event === 'fix-round' && e.node === node);
+    return from < 0 ? [] : this.events.slice(from).filter((e) => e.event === 'answer' && (e.verdict === 'fixed' || e.verdict === 'open')).map((e) => e.id);
   }
 
   /**
@@ -391,6 +384,7 @@ export class Ledger {
     const lines = nodes.map((node) => {
       const ids = this.fixable(node).map((f) => f.id).join(' ');
       const rounds = this.rounds(node);
+      if (rounds && !this.rechecked(node).length) return `${node}: recheck of round ${rounds} due, for ${ids}`;
       if (rounds >= MAX_FIX_ROUNDS) return `${node}: ${rounds} rounds spent; list ${ids} under Still open`;
       if (!this.progressSinceLastRound(node)) return `${node}: last round fixed none; list ${ids} under Still open`;
       return `${node}: round ${rounds + 1} of ${MAX_FIX_ROUNDS}, for ${ids}`;

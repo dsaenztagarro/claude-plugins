@@ -207,6 +207,34 @@ describe('a recheck', () => {
     expect(added).toEqual([]);
   });
 
+  test('a check that answers no id of a round left without its recheck still records its findings', () => {
+    const ledger = checked();
+    expect(fixRound(ledger)).toBeNull();
+    expect(ledger.next()).toMatch(/check: recheck of round 1 due, for F1 F2/);
+    const { added } = ledger.record('check', "- [high] b.rb:1: the next ticket's own");
+    expect(added.map((f) => f.id)).toEqual(['F4']);
+  });
+
+  test('a round whose every finding was accepted before its recheck does not swallow later findings', () => {
+    const ledger = start(folder(), '12');
+    ledger.record('check', '- [high] a.rb:1: one');
+    expect(fixRound(ledger)).toBeNull();
+    ledger.accept('F1', 'the fixer judged it wrong');
+    ledger.record('check', 'F1: open');
+    const { added } = ledger.record('check', "- [high] b.rb:1: the next ticket's own");
+    expect(added.map((f) => f.id)).toEqual(['F2']);
+  });
+
+  test('a recheck delivered in two reports counts both halves', () => {
+    const ledger = checked();
+    expect(fixRound(ledger)).toBeNull();
+    ledger.record('check', 'F1: fixed');
+    const { answered } = ledger.record('check', 'F2: fixed\n- [high] a.rb:9: found while rechecking');
+    expect(answered).toEqual(['F2']);
+    expect(ledger.open('check')).toEqual([]);
+    expect(ledger.of('finding').map((e) => e.id)).toEqual(['F1', 'F2', 'F3']);
+  });
+
   test('an answer of fixed counts only from the recheck of a round', () => {
     const ledger = checked();
     ledger.record('check', 'F1: fixed');
