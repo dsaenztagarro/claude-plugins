@@ -1,6 +1,7 @@
 ---
 name: plan
 description: "Publish a confirmed plan to the issue tracker (GitHub Issues or Jira) as a marked section of the epic, with the tickets it calls for. Use right after a plan is approved, or when asked to save, publish or update a plan or epic."
+argument-hint: "[#N | <folder>#N | owner/repo#N | URL | PROJ-123]"
 ---
 
 # Publish a plan to the tracker
@@ -11,8 +12,8 @@ Plan mode's own file is scratch, not a record.
 
 ## 1. Find the tracker and the item
 
-- **Which tracker.** A GitHub remote means GitHub Issues through `gh`. A Jira project named in the project's instructions means Jira, through the Atlassian MCP server or `acli`, whichever this session has. If neither tells you, ask. Never guess, and if the tracker has no tool here, stop and say so.
-- **Which item.** This is the epic or ticket the plan is for, usually named in the conversation. If there is none, propose one with a title and body, and create it only when the user confirms. A new epic's place among the others — under the roadmap issue, its own `## Sequence`, its phase section — is `/sdlc:roadmap`'s.
+- **Which tracker.** `node ${CLAUDE_PLUGIN_ROOT}/scripts/item.mts mode` says whether the session runs in one checkout or a workspace of them. A GitHub remote — the checkout's, or in a workspace that of the repository the item lives in — means GitHub Issues through `gh`. A Jira project named in the project's instructions means Jira, through the Atlassian MCP server or `acli`, whichever this session has. If neither tells you, ask. Never guess, and if the tracker has no tool here, stop and say so.
+- **Which item.** This is the epic or ticket the plan is for, usually named in the conversation, and resolved with `node ${CLAUDE_PLUGIN_ROOT}/scripts/item.mts resolve <argument>`. If there is none, propose one with a title and body, and create it only when the user confirms. A new epic's place among the others — under the roadmap issue, its own `## Sequence`, its phase section — is `/sdlc:roadmap`'s.
 
 ## 2. Write it for the person who picks up the work
 
@@ -23,6 +24,7 @@ That reader has the tracker and the repository and never saw this conversation.
   - the entry criteria
   - the units of work, each mapped to its ticket: each unit is one coherent change and one pull request, and tickets from one analysis are merged into one unit, not kept as siblings
   - the tests to write, as each ticket's Tests section (the shape is below)
+  - for a ticket expected to change repositories besides its own, a `### Repositories` section listing every one as `owner/repo`, its own included; a ticket with none touches only its own repository
   - the verification level and procedure, and the human acceptance steps
 - **A ticket's Tests section is its specification.**
   - It has two parts.

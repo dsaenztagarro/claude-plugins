@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { find, start } from '../scripts/ledger.mts';
+import { find, forSession, start } from '../scripts/ledger.mts';
 
 const folder = () => fs.mkdtempSync(path.join(os.tmpdir(), 'sdlc-ledger-'));
 
@@ -84,6 +84,22 @@ describe('the ledger', () => {
     fs.mkdirSync(path.join(base, 'app', 'models'), { recursive: true });
     expect(find(path.join(base, 'app', 'models'), '12')?.key).toBe('12');
     expect(fs.readFileSync(path.join(base, '.sdlc', '.gitignore'), 'utf-8')).toBe('*\n');
+  });
+
+  test('a ledger started in a folder that is not a git checkout lives in that folder', () => {
+    const workspace = fs.realpathSync(folder());
+    expect(start(workspace, '12').folder).toBe(path.join(workspace, '.sdlc', 'runs', '12'));
+    const worktree = path.join(workspace, '.sdlc', 'runs', '12', 'ws', 'api');
+    fs.mkdirSync(worktree, { recursive: true });
+    expect(find(worktree, '12')?.key).toBe('12');
+  });
+
+  test("a ledger keyed by an owner/repo reference stays one folder that the hooks find", () => {
+    const workspace = fs.realpathSync(folder());
+    start(workspace, 'acme/api#30').claim('session-1');
+    expect(fs.readdirSync(path.join(workspace, '.sdlc', 'runs'))).toEqual(['acme-api#30']);
+    expect(find(workspace, 'acme/api#30')?.key).toBe('acme-api#30');
+    expect(forSession(workspace, 'session-1').map((ledger) => ledger.key)).toEqual(['acme-api#30']);
   });
 
   test('next names the round due, and the last one on opus', () => {

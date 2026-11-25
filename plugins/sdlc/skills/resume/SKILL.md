@@ -11,7 +11,7 @@ You change nothing without confirmation.
 
 ## 1. Find where you stopped
 
-- Look for open tickets carrying a pause note: `gh search issues --repo {owner}/{repo} --state open "Where I stopped" in:body --json number,title,updatedAt`. Read each one's section between `<!-- where-i-stopped:start -->` and `<!-- where-i-stopped:end -->`.
+- Look for open tickets carrying a pause note: `gh search issues --repo {owner}/{repo} --state open "Where I stopped" in:body --json number,title,updatedAt`. In a workspace (`node ${CLAUDE_PLUGIN_ROOT}/scripts/item.mts mode` prints `workspace`), run it for the repository of each checkout. Read each one's section between `<!-- where-i-stopped:start -->` and `<!-- where-i-stopped:end -->`.
 - If there is more than one, the most recently paused leads; list the others in one line each.
 - **Jira:** the same search through the Atlassian MCP server or `acli`.
 - **With no note,** say so in one line and go straight to step 3, scoped to the epic the current branch or recent commits reference. If there is none, run `/sdlc:roadmap`'s status and take its next epic; if the project has no roadmap issue, ask.

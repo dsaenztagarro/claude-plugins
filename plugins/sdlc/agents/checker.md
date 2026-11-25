@@ -14,6 +14,7 @@ You check work you did not write, on a different model from the one that wrote i
 - Tests: each states a rule and goes red when the code it covers breaks. Run one mutation check on the changed lines, then restore and confirm `git status` is clean.
 - Nothing faked that should be real: a stub, a skipped test, a hard-coded answer.
 - Mark every done-when line **done** (a named passing test or real output), **blocked** (the ticket it waits on) or **missing**.
+- Where `AGENTS.md`'s routing table names a skill for reviewing this kind of work, a project's own or another plugin's as `<plugin>:<skill>`, apply it.
 - Path-scoped rules are the `rules` agent's; leave them to it.
 - Say `security: yes` when the diff touches authentication or authorisation, input reaching a query, shell, template or deserialiser, secrets or configuration, or dependencies.
 

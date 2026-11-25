@@ -1,7 +1,7 @@
 ---
 name: build
 description: "Build a ticket, or an epic's next batch, to a pull request that is reviewed, walked and ready to merge, then close it once merged. Use when asked to build, implement or finish a ticket or an epic end to end, or to close it out after its PR merged."
-argument-hint: "<ticket | epic>"
+argument-hint: "[#N | <folder>#N | owner/repo#N | URL | PROJ-123]"
 ---
 
 # Build a ticket or an epic to a ready pull request
@@ -36,11 +36,12 @@ The session keeps only digests, so a long epic does not grow its context with ev
 
 Stop, and say why, at the first of these that fails:
 
-- **The tracker and the item** are found as `/sdlc:plan` finds them: never guessed. An item with child issues (sub-issues on GitHub, child issues on Jira), or labelled an epic, is an epic.
+- **The item resolves.** `node ${CLAUDE_PLUGIN_ROOT}/scripts/item.mts resolve --for build <argument>` turns the argument into one ticket or epic, from a checkout or a workspace of checkouts; on exit 2, show its message, which names the accepted forms or the right command, and stop. With no argument, propose the ticket `node ${CLAUDE_PLUGIN_ROOT}/scripts/item.mts from-branch <current branch>` names, the ticket of an open pause note, and the next batch of the roadmap's next epic, ask with `AskUserQuestion`, recommended first, and never start before the user picks one. A closed ticket comes through only with the `merged` pull requests that closed it, and goes straight to step 8. An item with child issues (sub-issues on GitHub, child issues on Jira), or labelled an epic, is an epic.
+- **The session's folder holds every repository the ticket touches:** `node ${CLAUDE_PLUGIN_ROOT}/scripts/item.mts check <repositories>`, with the `repositories` the resolver printed, which for an epic are those of every child. A ticket touches its own repository unless its `### Repositories` section lists others; on exit 2, show where to start or what to clone, and stop.
 - **Its entry criteria are closed.** An open one names the ticket that closes it.
 - **An epic has an implementation plan** in its description, giving the order of its tickets and the batches they ship in. With none, propose the order — dependencies first, each ticket after those whose code it needs — and publish it with `/sdlc:plan` once the user confirms it. The run builds the plan's next batch: its open tickets whose entry criteria are closed, in the plan's order.
 - **The project's gate runs here:** the command its `AGENTS.md` names runs, and the hooks it installs are in place. A gate that cannot run cannot pass.
-- **The main checkout is clean** and on the default branch: the builder cuts its worktree from a freshly fetched base.
+- **Each checkout the ticket touches is clean** and on its default branch: the builder's worktrees are cut from freshly fetched bases.
 
 ## 1. Resume from what the tracker already holds
 
@@ -136,7 +137,7 @@ Each stage is one of the plugin's agents, dispatched fresh; the agent's file hol
 | verify | `sdlc:verifier` | the base, the branch and the findings by id, as `ledger.mts still-open` prints them: the hook numbers them in the order the agents finish |
 | fix | `sdlc:fixer` | what `ledger.mts round` printed — the node, the round and its open findings by id — then the worktree and base |
 
-For the first ticket the session creates the worktree with its branch cut from the freshly fetched base, or continued from the branch when one exists locally or on origin; every later ticket of a batch works in the same worktree, on the commits its predecessors left.
+For the first ticket the session creates one worktree per repository the ticket touches, at `.sdlc/runs/<item>/ws/<repo>` below the session's folder, each on the run's branch cut from that repository's freshly fetched base, or continued from the branch when one exists locally or on origin; every later ticket of a batch works in the same worktrees, on the commits its predecessors left. Every agent's brief names each worktree.
 The checker and the rules agent start together after the builder; both are read-only.
 
 ### Findings converge or stop
@@ -156,7 +157,7 @@ Why: a recheck that re-reviews from scratch cannot tell a finding still open fro
  ledger.mts close <ticket> <body-file>
 ```
 
-- `ledger.mts` is `node ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mts`; it needs Node 22.18 or later. Start the ledger in the folder the session runs in, before the builder, and put the run's worktree below that folder: the hooks find the ledger by walking up from where each tool call runs, so a worktree beside the repository leaves a fixer's push and the session's turn unguarded.
+- `ledger.mts` is `node ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mts`; it needs Node 22.18 or later. Start the ledger in the folder the session runs in, before the builder, keyed by the item as the user named it; `<item>` below is the folder it prints, where an `owner/repo#N` key reads `owner-repo#N`: the worktrees sit below it, in `.sdlc/runs/<item>/ws/`, so the hooks, which find the ledger by walking up from where each tool call runs, guard every one of them.
 - The plugin's checking agents — checker, rules, security, verifier, walker — are recorded by a hook when each finishes, recheck answers included. Any other reviewer's output, such as a fresh review agent or `/code-review`, is recorded by the session: written to a file in the finding format and passed to `ledger.mts node <ticket> <node> <file>`. An answer not recorded is a round that fixed nothing.
 - The ledger survives a compaction: the hook writes each open ledger's next step into the summary and into the context of the session that follows.
 - Only findings that **hold** go to a fixer. Each round is opened by `ledger.mts round <ticket> <node>`, one at a time, and taken by one fixer with all of that node's open ids. A finding left unfixed by decision, the user's or the review's triage, is taken out first with `ledger.mts accept <ticket> <id> "<why>"`; it stays under Still open with its reason.
@@ -167,11 +168,11 @@ Why: a recheck that re-reviews from scratch cannot tell a finding still open fro
 
 ### Gate and pull request, in the session
 
-- Run the full gate in the worktree after each ticket, and quote its output: a red gate found one ticket later is blamed on the wrong ticket.
+- Run the full gate in each worktree after each ticket, with that repository's own `AGENTS.md` command, and quote its output: a red gate found one ticket later is blamed on the wrong ticket.
 - Once every ticket of the run is built, push with `/sdlc:git-push`.
-- Open one pull request: `## Sequence` first — the ticket or the epic, the previous pull request, the next; a Conventional Commit title; a body that compares with the base branch, says what each ticket does, carries the gate's output and the mutation checks, lists parked lines, and holds `## Still open` from the ledger. Then close the ledger.
-- `Closes #N` for each ticket with nothing parked; otherwise `Part of #N`. An epic is never closed by the pull request.
-- Wait for CI with the Monitor tool on `gh pr checks <n> --watch` (or the forge's equivalent), never by polling, and quote its result in the report. A run that outlasts Monitor's deadline is reported as unfinished, never as green.
+- Open one pull request per repository: `## Sequence` first — the ticket or the epic, the previous pull request, the next, and the run's pull requests in the other repositories; a Conventional Commit title; a body that compares with the base branch, says what each ticket does, carries the gate's output and the mutation checks, lists parked lines, and holds `## Still open` from the ledger. Then close the ledger.
+- `Closes owner/repo#N` for each ticket with nothing parked, in the last pull request of the run to open; otherwise `Part of owner/repo#N`. An epic is never closed by a pull request.
+- Wait for CI with the Monitor tool on `gh pr checks <n> --watch`, never by polling, and quote its result in the report. A run that outlasts Monitor's deadline is reported as unfinished, never as green.
 - Never merge: a person does.
 
 ### When the run needs the user

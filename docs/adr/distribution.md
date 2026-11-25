@@ -34,6 +34,23 @@ Workflow feedback from either goes to one `template-feedback` issue on the plugi
 A skill ships here only if it works, and is safe to publish, on a machine that is not the maintainer's: no home-directory path, no employer, tracker site or product name, no secret's location.
 Anything tied to one machine, employer or person ships from a private marketplace instead.
 A skill or script takes such a fact as a required argument, never a default.
+A test holds what the plugins ship to that boundary: no home folder, no forge but GitHub, no owner but as the marketplace a plugin is installed from.
+
+### A run lives below the folder the session started in
+
+A session starts in one checkout, or in a workspace: a folder whose sub-folders are checkouts, one per repository.
+Either way a run's worktrees sit in `.sdlc/runs/<item>/ws/<repo>` below it, where the findings ledger already is, so the hooks that find the ledger by walking up from a tool call guard every worktree, and the user's own checkouts are never written.
+A GitHub issue belongs to one repository, so a ticket changes that repository alone unless a `### Repositories` section lists every one it changes; each gets its own worktree and pull request.
+One checkout stays a first-class place to start, since most projects are one repository and a parent folder would buy them nothing.
+Every skill that takes an item reads it through one script, `item.mts`, which refuses an argument it cannot use with every accepted form, or redirects a pull request passed for a ticket to the right command.
+
+### Items resolve through a tracker port and a forge port
+
+The resolver, `resolver.mts`, names no provider: it calls a tracker for tickets and a forge for pull requests, the two interfaces in `ports.mts`, and a test holds it to that.
+GitHub implements both ports through `gh`; Jira implements the tracker over its REST API with Node's own `fetch`, taking the site and credentials from `JIRA_BASE_URL`, `JIRA_EMAIL` and `JIRA_API_TOKEN`, with no default.
+Two ports, not one, because Jira is only a tracker: a Jira ticket's pull requests still live on a forge, and are found by its key in their bodies.
+So the same pipeline runs a project whose tickets live in GitHub Issues and one whose tickets live in Jira, and another tracker joins as one more adapter.
+The adapters are scripts, so they call CLIs and REST, never an MCP server: only the model can call MCP tools, and a resolver must answer the same way whatever the model does. The skills keep the Atlassian MCP server or `acli` for the edits the model itself makes.
 
 ### The namespace replaces the prefix
 
@@ -83,6 +100,7 @@ A workflow stage that a later stage, or the calling session, already covers is r
 ## Left open
 
 - **A plugin per concern, such as a separate `git` or `release` plugin.** Reopens when a project wants one of the pipeline's skills without the rest.
+- **A forge other than GitHub.** The forge port has one adapter, GitHub's, and the skills drive `gh`; another forge needs its adapter and the skills' forge lines. Reopens when an adopter on another forge asks.
 - **Hooks that enforce the pipeline's order:** no pull request before the checks finished, no push before the gate is green. A push guard is only as sound as the gate result it reads, and the gate is a command in each project's `AGENTS.md` that records nothing; until then the forge holds the order, with branch protection, required checks and draft pull requests. Reopens when `sdlc` has a gate that records its own result against HEAD.
 
 ## References

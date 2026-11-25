@@ -1,6 +1,7 @@
 ---
 name: close
 description: "Close a finished ticket with evidence: each done-when line against a named test or real command output, live checks handed to the user. Use when a merged PR did not close its ticket, or when asked to mark a ticket done or close it."
+argument-hint: "<#N | <folder>#N | owner/repo#N | URL | PROJ-123>..."
 ---
 
 # Close a ticket with evidence
@@ -10,6 +11,8 @@ Close only what you can show; leave open what you cannot, and name what is missi
 Several tickets are closed one at a time, each against its own evidence, and reported together.
 
 ## 1. Read
+
+Each ticket named resolves with `node ${CLAUDE_PLUGIN_ROOT}/scripts/item.mts resolve <argument>`; on exit 2, show its message and stop.
 
 - The ticket's done-when, Tests section, verification level and procedure, parent epic, and the pull requests or commits that did the work.
 - The comments that resolved its rows, when its done-when is a table resolved in comments.

@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 The repository is the plugins alone, renamed `claude-plugins`, with the marketplace named for its owner; the project template moves to its own repository, `dsaenztagarro/agent-sdlc`.
 
+### Added
+
+- **`sdlc` runs from a workspace of checkouts as well as from one checkout.** A ticket changes its own repository unless its `### Repositories` section lists others; `/sdlc:build` then cuts one worktree and opens one pull request per repository, all below the session's folder in `.sdlc/runs/<item>/ws/`.
+- **Every skill that takes a ticket or a pull request names the valid forms when the argument is wrong:** `12`, `#12`, `<folder>#12`, `owner/repo#12`, a GitHub URL or a Jira key. A Jira key needs `JIRA_BASE_URL`, `JIRA_EMAIL` and `JIRA_API_TOKEN`, and is read over Jira's REST API with nothing installed. A pull request passed to `/sdlc:build` names `/sdlc:review` and the ticket it closes, a ticket passed to `/sdlc:review` with no pull request names `/sdlc:build`, and `/sdlc:build` with no argument proposes candidates and asks.
+
 ### Changed
 
 - **BREAKING: the marketplace is `dsaenztagarro`, served from `dsaenztagarro/claude-plugins`.** Installs read `sdlc@dsaenztagarro` and `ds@dsaenztagarro`. On each machine, `claude plugin marketplace remove agent-sdlc`, then `claude plugin marketplace add dsaenztagarro/claude-plugins` and install both plugins again.
