@@ -193,6 +193,8 @@ describe('a recheck', () => {
     ledger.record('check', report);
     const again = ledger.record('check', `${report}\n`);
     expect(again.added).toEqual([]);
+    const reworded = ledger.record('check', `## Recheck\n${report}`);
+    expect(reworded.added).toEqual([]);
     expect(ledger.of('finding').map((e) => e.id)).toEqual(['F1', 'F2', 'F3']);
   });
 
@@ -349,6 +351,21 @@ describe('progress is content that moved', { timeout: 30_000 }, () => {
     review.record('review', '- [high] a.rb:1: one\n- [high] a.rb:2: two');
     expect(fixRound(review, 'review')).toBeNull();
     fs.writeFileSync(path.join(worktree, 'a.rb'), 'total = 2\n');
+    review.record('review', 'F1: fixed\nF2: open');
+    expect(review.open().map((f) => f.id)).toEqual(['F2']);
+    expect(fixRound(review, 'review')).toBeNull();
+  });
+
+  test("a ledger with no worktree of its own counts a fix made in a linked worktree of its checkout", () => {
+    const checkout = repository(folder());
+    fs.writeFileSync(path.join(checkout, '.gitignore'), '.worktrees/\n');
+    const worktree = path.join(checkout, '.worktrees', 'issue-9');
+    git(checkout, 'worktree', 'add', '-q', worktree, '-b', 'issue-9');
+    const review = start(checkout, 'pr-9');
+    review.record('review', '- [high] a.rb:1: one\n- [high] a.rb:2: two');
+    expect(fixRound(review, 'review')).toBeNull();
+    fs.writeFileSync(path.join(worktree, 'a.rb'), 'total = 2\n');
+    git(worktree, 'commit', '-qam', 'fix: F1');
     review.record('review', 'F1: fixed\nF2: open');
     expect(review.open().map((f) => f.id)).toEqual(['F2']);
     expect(fixRound(review, 'review')).toBeNull();

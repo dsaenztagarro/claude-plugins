@@ -24,7 +24,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 export const RUNS = path.join('.sdlc', 'runs');
@@ -77,6 +76,13 @@ export function contentHash(worktree: string): string {
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }
+}
+
+/** The checkout and every worktree git links to it that is still on disk. */
+function linkedWorktrees(checkout: string): string[] {
+  const listed = git(checkout, ['worktree', 'list', '--porcelain']).split('\n')
+    .filter((line) => line.startsWith('worktree ')).map((line) => line.slice('worktree '.length));
+  return [checkout, ...listed.filter((worktree) => fs.existsSync(path.join(worktree, '.git')))];
 }
 
 const isCheckout = (folder: string) => fs.existsSync(path.join(folder, '.git'));
@@ -204,9 +210,11 @@ export class Ledger {
    * adds findings, and only a verifier's verdict counts in it.
    */
   record(node: string, text: string): { added: Finding[]; answered: string[]; ignored: number; recheck: number | null } {
-    const report = createHash('sha256').update(text.trim()).digest('hex');
-    const rechecked = this.events.findLast((e) => (e.event === 'fix-round' || e.event === 'recheck') && e.node === node);
-    if (rechecked?.event === 'recheck' && rechecked.report === report) {
+    const rechecked = this.rechecked(node);
+    if (rechecked && text.split('\n').some((line) => {
+      const answer = ANSWER.exec(line);
+      return answer !== null && /^(fixed|open)$/i.test(answer[2]!) && rechecked.ids.includes(answer[1]!.toUpperCase());
+    })) {
       return { added: [], answered: [], ignored: rechecked.ignored, recheck: rechecked.round };
     }
     const round = this.awaitingRecheck(node);
@@ -246,7 +254,7 @@ export class Ledger {
       added.push({ id, node, severity, where, what, open: severity !== 'low', ...(severity === 'low' ? { note: true as const } : {}) });
     }
     // A report that answers none of the round's ids, such as an interrupted agent's, leaves the recheck still due.
-    if (round && answered.length) this.append('recheck', { node, round: round.round, ignored, report });
+    if (round && answered.length) this.append('recheck', { node, round: round.round, ids: round.ids, ignored });
     return { added, answered, ignored, recheck: round ? round.round as number : null };
   }
 
@@ -259,6 +267,12 @@ export class Ledger {
     return this.events.findLast((e) => e.event === 'fix-round' && e.node === node) ?? null;
   }
 
+  /** The node's last recheck when no fix round followed it, or null: a report that answers its ids again is that recheck recorded twice. */
+  rechecked(node: string): Event | null {
+    const last = this.events.findLast((e) => (e.event === 'fix-round' || e.event === 'recheck') && e.node === node);
+    return last?.event === 'recheck' && Array.isArray(last.ids) ? last : null;
+  }
+
   /** The node's fix round whose recheck has not been recorded yet, or null. */
   awaitingRecheck(node: string): Event | null {
     const last = this.events.findLast((e) => (e.event === 'fix-round' || e.event === 'recheck') && e.node === node);
@@ -268,17 +282,18 @@ export class Ledger {
   /**
    * Where this ledger's fixers work: the run's own worktrees, `ws/<repo>` below it. A ledger with none, such as a
    * review's or a walk's, fixes where the change already is: every other run's worktrees, and the checkout that
-   * holds the ledger or the workspace's checkouts.
+   * holds the ledger or the workspace's checkouts, each with its linked worktrees.
    */
   worktrees(): string[] {
     const own = folders(path.join(this.folder, 'ws'));
     if (own.length) return own;
     const runs = path.dirname(this.folder);
     const base = path.dirname(path.dirname(runs));
-    return [
+    const checkouts = isCheckout(base) ? [base] : folders(base).filter(isCheckout);
+    return [...new Set([
       ...folders(runs).flatMap((run) => folders(path.join(run, 'ws'))).filter(isCheckout),
-      ...(isCheckout(base) ? [base] : folders(base).filter(isCheckout)),
-    ];
+      ...checkouts.flatMap(linkedWorktrees),
+    ])];
   }
 
   /** Each worktree's content hash; throws GitFailure when git cannot say. */
