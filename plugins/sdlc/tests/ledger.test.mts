@@ -196,6 +196,15 @@ describe('a recheck', () => {
     expect(ledger.of('finding').map((e) => e.id)).toEqual(['F1', 'F2', 'F3']);
   });
 
+  test('a report that answers none of the round\'s ids is not its recheck', () => {
+    const ledger = checked();
+    expect(fixRound(ledger)).toBeNull();
+    ledger.record('check', '');
+    const { added, answered } = ledger.record('check', 'F1: fixed\nF2: fixed\n- [high] a.rb:9: found while rechecking');
+    expect(answered).toEqual(['F1', 'F2']);
+    expect(added).toEqual([]);
+  });
+
   test('an answer of fixed counts only from the recheck of a round', () => {
     const ledger = checked();
     ledger.record('check', 'F1: fixed');
@@ -253,6 +262,17 @@ describe('severity and verdicts', () => {
       'F5: refuted — `order_test.rb:12` covers it',
     ].join('\n'));
     expect(ledger.open().map((f) => f.id)).toEqual(['F1', 'F2', 'F3']);
+  });
+
+  test('a refutation may name its file by an absolute path', () => {
+    const ledger = start(folder(), '12');
+    ledger.record('check', '- [high] a.rb:1: one\n- [high] a.rb:2: two\n- [high] a.rb:3: three');
+    ledger.record('verify', [
+      'F1: refuted — /Users/dev/app/models/order.rb:12 guards it',
+      'F2: refuted — `/srv/app/a.rb:3` guards it',
+      'F3: refuted — see https://example.com/app/a.rb:3',
+    ].join('\n'));
+    expect(ledger.open().map((f) => f.id)).toEqual(['F3']);
   });
 
   test('a refutation that does not count leaves a needs-design question standing', () => {

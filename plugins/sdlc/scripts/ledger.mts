@@ -13,7 +13,7 @@
 // `F<n>: refuted — <file>:<line> ...`, which is ignored without that location,
 // or `F<n>: needs-design — <question>`, which keeps it out of the fix rounds
 // as a question for the user. The first report of a node after its fix round
-// is that round's recheck: `F<n>: fixed|open` count there, for the ids the
+// that answers one of the round's ids is that round's recheck: `F<n>: fixed|open` count there, for the ids the
 // round carried, and a finding it adds is not recorded, so the set a loop
 // works on only shrinks. Only the session accepts a finding, leaving it
 // unfixed: it leaves the rounds and stays under Still open with its reason.
@@ -33,7 +33,7 @@ export const MAX_NOTES = 3;
 const FINDING = /^\s*-\s*\[(high|medium|low)\]\s+(.+?):\s+(.+?)\s*$/i;
 const ANSWER = /^\s*-?\s*(F\d+):\s*(fixed|open|holds|refuted|needs-design)\b[\s—–:-]*(.*?)\s*$/i;
 /** A path and a line: a name with an extension, or a path with a folder, never a time, a port or a URL. */
-const LOCATION = /(?<![\w/:.-])(?:(?:[\w.-]+\/)+[\w.-]+|[\w-]+(?:\.[\w-]+)*\.[A-Za-z]\w*):\d+/;
+const LOCATION = /(?<![\w/:.-])\/?(?:(?:[\w.-]+\/)+[\w.-]+|[\w-]+(?:\.[\w-]+)*\.[A-Za-z]\w*):\d+/;
 
 export type Event = { at: string; event: string } & Record<string, any>;
 export interface Finding {
@@ -245,7 +245,8 @@ export class Ledger {
       this.append('finding', { id, node, severity, where, what });
       added.push({ id, node, severity, where, what, open: severity !== 'low', ...(severity === 'low' ? { note: true as const } : {}) });
     }
-    if (round) this.append('recheck', { node, round: round.round, ignored, report });
+    // A report that answers none of the round's ids, such as an interrupted agent's, leaves the recheck still due.
+    if (round && answered.length) this.append('recheck', { node, round: round.round, ignored, report });
     return { added, answered, ignored, recheck: round ? round.round as number : null };
   }
 
