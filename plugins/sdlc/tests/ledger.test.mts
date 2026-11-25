@@ -1,14 +1,42 @@
 // The findings ledger: how a checking agent's output becomes numbered
 // findings, how an answer by id closes one, and what closing needs.
-// Without it a recheck re-reviews from scratch, and nobody can tell a loop
-// that converges from one that spins.
+// Contract: the set of findings only shrinks once a fix round starts. A
+// recheck answers the ids its round carried and adds nothing, a verdict
+// counts only with its evidence, and a round that moved no file is not
+// progress. Without it a recheck re-reviews from scratch, and nobody can tell
+// a loop that converges from one that spins.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { describe, expect, test } from 'vitest';
-import { find, forSession, start } from '../scripts/ledger.mts';
+import { find, forSession, start, type Ledger } from '../scripts/ledger.mts';
 
 const folder = () => fs.mkdtempSync(path.join(os.tmpdir(), 'sdlc-ledger-'));
+
+const git = (dir: string, ...args: string[]) =>
+  execFileSync('git', ['-C', dir, '-c', 'user.name=dev', '-c', 'user.email=dev@example.com', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', ...args],
+    { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] });
+
+/** A ledger whose run has one worktree: a real repository with one commit. */
+function run(): { ledger: Ledger; worktree: string } {
+  const ledger = start(folder(), '12');
+  const worktree = path.join(ledger.folder, 'ws', 'api');
+  fs.mkdirSync(worktree, { recursive: true });
+  git(worktree, 'init', '-q');
+  fs.writeFileSync(path.join(worktree, 'a.rb'), 'total = 1\n');
+  git(worktree, 'add', '-A');
+  git(worktree, 'commit', '-qm', 'base');
+  return { ledger, worktree };
+}
+
+/** Open the node's next round and hand it to a fixer; the refusal when it may not open. */
+function fixRound(ledger: Ledger, node = 'check'): string | null {
+  const result = ledger.openRound(node);
+  if ('refused' in result) return result.refused;
+  ledger.take();
+  return null;
+}
 
 describe('the ledger', () => {
   test('each finding line gets the next id, and prose around it is ignored', () => {
@@ -16,7 +44,7 @@ describe('the ledger', () => {
     const { added } = ledger.record('check', [
       'Two problems.',
       '- [high] app/order.rb:42: total ignores the discount',
-      '- [low] app/order.rb:7: unused variable',
+      '- [medium] app/order.rb:7: tax is rounded twice',
     ].join('\n'));
     expect(added.map((f) => f.id)).toEqual(['F1', 'F2']);
     expect(ledger.open('check')).toHaveLength(2);
@@ -25,7 +53,9 @@ describe('the ledger', () => {
   test('a recheck answering fixed or the verifier answering refuted closes the finding', () => {
     const ledger = start(folder(), '12');
     ledger.record('check', '- [high] a.rb:1: one\n- [high] a.rb:2: two\n- [high] a.rb:3: three');
-    ledger.record('check', 'F1: fixed\nF2: refuted\nF3: open');
+    ledger.record('verify', 'F2: refuted — order_test.rb:12 covers it');
+    expect(fixRound(ledger)).toBeNull();
+    ledger.record('check', 'F1: fixed\nF3: open');
     expect(ledger.open().map((f) => f.id)).toEqual(['F3']);
   });
 
@@ -46,7 +76,7 @@ describe('the ledger', () => {
   test('a refuted or accepted finding reported again keeps its id and stays out of the rounds', () => {
     const ledger = start(folder(), '12');
     ledger.record('check', '- [high] a.rb:1: one\n- [high] a.rb:2: two');
-    ledger.record('verify', 'F1: refuted');
+    ledger.record('verify', 'F1: refuted — a.rb:1 already guards it');
     ledger.accept('F2', 'speculative');
     const { added } = ledger.record('check', '- [high] a.rb:1: one\n- [high] a.rb:2: two');
     expect(added).toEqual([]);
@@ -62,7 +92,7 @@ describe('the ledger', () => {
 
   test('an accepted finding leaves the fix rounds and stays under Still open with its reason', () => {
     const ledger = start(folder(), '12');
-    ledger.record('review', '- [high] a.rb:1: one\n- [low] a.rb:2: could race');
+    ledger.record('review', '- [high] a.rb:1: one\n- [medium] a.rb:2: could race');
     ledger.accept('F2', 'no walk reaches the race');
     const round = ledger.openRound('review');
     expect('brief' in round && round.brief).not.toMatch(/F2/);
@@ -102,13 +132,158 @@ describe('the ledger', () => {
     expect(forSession(workspace, 'session-1').map((ledger) => ledger.key)).toEqual(['acme-api#30']);
   });
 
-  test('next names the round due, and the last one on opus', () => {
+  test('next names the round due', () => {
+    const ledger = start(folder(), '12');
+    ledger.record('check', '- [high] a.rb:1: one\n- [high] a.rb:2: two\n- [high] a.rb:3: three');
+    expect(fixRound(ledger)).toBeNull();
+    ledger.record('check', 'F1: fixed');
+    expect(fixRound(ledger)).toBeNull();
+    ledger.record('check', 'F2: fixed');
+    expect(ledger.next()).toBe('check: round 3 of 3, for F3');
+  });
+
+  test('a finding reported again with its path in another case keeps its id', () => {
+    const ledger = start(folder(), '12');
+    ledger.record('check', '- [high] App/Order.rb:42: total ignores the discount');
+    const { added } = ledger.record('check', '- [high] app/order.rb:42: total ignores the discount');
+    expect(added).toEqual([]);
+  });
+});
+
+describe('a recheck', () => {
+  const checked = () => {
+    const ledger = start(folder(), '12');
+    ledger.record('check', '- [high] a.rb:1: one\n- [high] a.rb:2: two');
+    ledger.record('rules', '- [medium] a.js:4: controller builds markup (stimulus.md)');
+    return ledger;
+  };
+
+  test("a recheck's answer counts only for the ids it was handed", () => {
+    const ledger = checked();
+    expect(fixRound(ledger)).toBeNull();
+    const { answered } = ledger.record('check', 'F1: fixed\nF3: fixed');
+    expect(answered).toEqual(['F1']);
+    expect(ledger.open().map((f) => f.id)).toEqual(['F2', 'F3']);
+  });
+
+  test('a new finding in a recheck is not recorded', () => {
+    const ledger = checked();
+    expect(fixRound(ledger)).toBeNull();
+    const { added, ignored } = ledger.record('check', 'F1: fixed\nF2: open\n- [high] a.rb:9: found while rechecking');
+    expect(added).toEqual([]);
+    expect(ignored).toBe(1);
+    expect(ledger.of('finding').map((e) => e.id)).toEqual(['F1', 'F2', 'F3']);
+  });
+
+  test('an answer of fixed counts only from the recheck of a round', () => {
+    const ledger = checked();
+    ledger.record('check', 'F1: fixed');
+    expect(ledger.open('check').map((f) => f.id)).toEqual(['F1', 'F2']);
+  });
+
+  test('the report after a recheck is a check again, and its findings are recorded', () => {
+    const ledger = checked();
+    expect(fixRound(ledger)).toBeNull();
+    ledger.record('check', 'F1: fixed\nF2: fixed');
+    const { added } = ledger.record('check', '- [high] b.rb:1: the next ticket has its own');
+    expect(added.map((f) => f.id)).toEqual(['F4']);
+  });
+});
+
+describe('severity and verdicts', () => {
+  test('a low finding is a note, at most three per agent, never verified, fixed or rechecked', () => {
+    const ledger = start(folder(), '12');
+    ledger.record('check', [
+      '- [high] a.rb:1: one',
+      '- [low] a.rb:2: a name could say more',
+      '- [low] a.rb:3: a comment restates the code',
+      '- [low] a.rb:4: a blank line is missing',
+      '- [low] a.rb:5: a fourth note',
+    ].join('\n'));
+    expect(ledger.notes().map((f) => f.id)).toEqual(['F2', 'F3', 'F4']);
+    expect(ledger.open().map((f) => f.id)).toEqual(['F1']);
+    ledger.record('verify', 'F2: refuted — a.rb:2 says enough');
+    expect(ledger.notes().map((f) => f.id)).toEqual(['F2', 'F3', 'F4']);
+    const round = ledger.openRound('check');
+    expect('brief' in round && round.brief).not.toMatch(/F2|F3|F4/);
+    ledger.take();
+    ledger.record('check', 'F1: fixed\nF2: fixed');
+    expect(ledger.notes().map((f) => f.id)).toEqual(['F2', 'F3', 'F4']);
+    expect(ledger.stillOpen()).toBe('No finding is open.');
+    expect(ledger.notesText()).toMatch(/^- F2 \[low\] check: a\.rb:2: a name could say more\n- F3 /);
+    expect(ledger.close('')).toEqual([]);
+  });
+
+  test('a refutation without the file and line that refute it leaves the finding holding', () => {
+    const ledger = start(folder(), '12');
+    ledger.record('check', '- [high] a.rb:1: one\n- [high] a.rb:2: two');
+    ledger.record('verify', 'F1: refuted — the code already handles it\nF2: refuted — order_test.rb:12 covers it');
+    expect(ledger.open().map((f) => f.id)).toEqual(['F1']);
+  });
+
+  test('a needs-design finding never opens a fix round and is listed as a question', () => {
     const ledger = start(folder(), '12');
     ledger.record('check', '- [high] a.rb:1: one');
-    ledger.append('fix-round', { node: 'check' });
-    ledger.record('check', 'F1: open\n- [high] a.rb:2: two');
-    ledger.append('fix-round', { node: 'check' });
-    ledger.record('check', 'F2: fixed');
-    expect(ledger.next()).toBe('check: round 3 of 3, on opus, for F1');
+    ledger.record('verify', 'F1: needs-design — does an empty basket get free shipping?');
+    expect(fixRound(ledger)).toMatch(/nothing to fix/);
+    expect(ledger.stillOpen()).toMatch(/^- F1 .* — needs design: does an empty basket get free shipping\?$/);
+    expect(ledger.next()).toMatch(/F1.*needs design/);
+    expect(ledger.close('')).toEqual(['F1']);
+  });
+
+  test('a needs-design finding the verifier later settles goes back to the rounds', () => {
+    const ledger = start(folder(), '12');
+    ledger.record('check', '- [high] a.rb:1: one');
+    ledger.record('verify', 'F1: needs-design — does an empty basket get free shipping?');
+    ledger.record('verify', 'F1: holds — the ticket now says it does not');
+    expect(fixRound(ledger)).toBeNull();
+  });
+});
+
+// Each test here builds a real repository and hashes it several times, a dozen git processes in all.
+describe('progress is content that moved', { timeout: 30_000 }, () => {
+  const found = () => {
+    const made = run();
+    made.ledger.record('check', '- [high] a.rb:1: one\n- [high] a.rb:2: two');
+    return made;
+  };
+
+  test("a round after one in which no worktree's content moved is refused", () => {
+    const { ledger } = found();
+    expect(fixRound(ledger)).toBeNull();
+    ledger.record('check', 'F1: open\nF2: open');
+    expect(fixRound(ledger)).toMatch(/content moved/);
+  });
+
+  test('a commit that changes no file is not progress', () => {
+    const { ledger, worktree } = found();
+    expect(fixRound(ledger)).toBeNull();
+    git(worktree, 'commit', '-q', '--allow-empty', '-m', 'fix: F1');
+    ledger.record('check', 'F1: open\nF2: open');
+    expect(fixRound(ledger)).toMatch(/content moved/);
+  });
+
+  test('a fixed answered for a round in which nothing moved leaves the finding open', () => {
+    const { ledger } = found();
+    expect(fixRound(ledger)).toBeNull();
+    ledger.record('check', 'F1: fixed\nF2: open');
+    expect(ledger.open().map((f) => f.id)).toEqual(['F1', 'F2']);
+  });
+
+  test('a round that changed a file, committed or not, closes what its recheck answers fixed and lets the next open', () => {
+    const { ledger, worktree } = found();
+    expect(fixRound(ledger)).toBeNull();
+    fs.writeFileSync(path.join(worktree, 'a.rb'), 'total = 2\n');
+    ledger.record('check', 'F1: fixed\nF2: open');
+    expect(ledger.open().map((f) => f.id)).toEqual(['F2']);
+    expect(fixRound(ledger)).toBeNull();
+  });
+
+  test("a git failure refuses the round in git's own words", () => {
+    const ledger = start(folder(), '12');
+    fs.mkdirSync(path.join(ledger.folder, 'ws', 'api'), { recursive: true });
+    ledger.record('check', '- [high] a.rb:1: one');
+    expect(fixRound(ledger)).toMatch(/not a git repository/);
+    expect(ledger.rounds('check')).toBe(0);
   });
 });

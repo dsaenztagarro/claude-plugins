@@ -134,7 +134,7 @@ Each stage is one of the plugin's agents, dispatched fresh; the agent's file hol
 | check | `sdlc:checker` | the ticket key, the branch and the commit the ticket started from — never the builder's report |
 | rules | `sdlc:rules` | the base and the branch; skipped when no `.claude/rules/*.md` matches a changed file |
 | security | `sdlc:security` | the base, the branch and the output of `/security-review`, which the session runs on the branch first; only when the checker says `security: yes` |
-| verify | `sdlc:verifier` | the base, the branch and the findings by id, as `ledger.mts still-open` prints them: the hook numbers them in the order the agents finish |
+| verify | `sdlc:verifier` | the base, the branch and the findings by id, as `ledger.mts still-open` prints them: the hook numbers them in the order the agents finish, and a note is never among them |
 | fix | `sdlc:fixer` | what `ledger.mts round` printed — the node, the round and its open findings by id — then the worktree and base |
 
 For the first ticket the session creates one worktree per repository the ticket touches, at `.sdlc/runs/<item>/ws/<repo>` below the session's folder, each on the run's branch cut from that repository's freshly fetched base, or continued from the branch when one exists locally or on origin; every later ticket of a batch works in the same worktrees, on the commits its predecessors left. Every agent's brief names each worktree.
@@ -143,34 +143,39 @@ The checker and the rules agent start together after the builder; both are read-
 ### Findings converge or stop
 
 Every checking agent writes each finding as `- [high|medium|low] <file>:<line>: <what>`. The plugin's ledger gives each an id and counts fix rounds per node; its hooks hold the rules below in the session that started it, so they survive a compaction.
-Why: a recheck that re-reviews from scratch cannot tell a finding still open from a new one, so nothing shows whether the loop converges.
+Why: a recheck that re-reviews from scratch cannot tell a finding still open from a new one, so nothing shows whether the loop converges. Here the set of findings only shrinks once a round starts: a recheck answers the ids its round carried, and what it finds beyond them is not recorded.
 
 ```
  ledger.mts start <ticket>
  checker + rules (+ security)  -> recorded by the hook as they finish     F1 F2 F3
- verifier on the new ids       -> recorded by the hook                  F2: refuted
+ verifier on the new ids       -> recorded by the hook      F2: refuted — a.rb:12 ...
  ledger.mts round <ticket> <node> -> opens the round, prints F1 F3
  fixer with that brief         -> one commit per finding
- recheck by that node's agent  -> F1: fixed  F3: open  (answers before anything new)
- ...at most 3 rounds per node, the third on opus
+ recheck by that node's agent  -> F1: fixed  F3: open  (those ids, and nothing new)
+ ...at most 3 rounds per node, none after a round that moved no file
  ledger.mts still-open <ticket> -> the pull request body's "## Still open"
+ ledger.mts notes <ticket>      -> the pull request body's "## Notes"
  ledger.mts close <ticket> <body-file>
 ```
 
 - `ledger.mts` is `node ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mts`; it needs Node 22.18 or later. Start the ledger in the folder the session runs in, before the builder, keyed by the item as the user named it; `<item>` below is the folder it prints, where an `owner/repo#N` key reads `owner-repo#N`: the worktrees sit below it, in `.sdlc/runs/<item>/ws/`, so the hooks, which find the ledger by walking up from where each tool call runs, guard every one of them.
-- The plugin's checking agents — checker, rules, security, verifier, walker — are recorded by a hook when each finishes, recheck answers included. Any other reviewer's output, such as a fresh review agent or `/code-review`, is recorded by the session: written to a file in the finding format and passed to `ledger.mts node <ticket> <node> <file>`. An answer not recorded is a round that fixed nothing.
+- The plugin's checking agents — checker, rules, security, verifier, walker — are recorded by a hook when each finishes, recheck answers included, whoever dispatched them. Any other reviewer's output, such as a fresh review agent or `/code-review`, is recorded by the session: written to a file in the finding format and passed to `ledger.mts node <ticket> <node> <file>`. An answer not recorded is a round that fixed nothing. Nothing else writes the ledger: the hook refuses an `Edit` or a `Write` of its file.
+- **A `low` finding is a note:** at most three per agent, never verified, fixed or rechecked. `ledger.mts notes <ticket>` prints them for the pull request body's `## Notes`.
+- **The first report of a node after its fix round is that round's recheck:** `fixed` and `open` count for the ids the round carried, and a finding it adds is ignored. A defect a fix introduces is the gate's and the review's to catch.
+- **A refutation counts only with the `<file>:<line>` that refutes it;** without one the finding holds.
+- **A finding the verifier answers `needs-design` is a question for the user,** never a fixer's: ask it with `AskUserQuestion`. An answer that settles it amends the ticket's lines, and the verifier answers that id again; one the user leaves open stays under Still open as the question, or is taken out with `ledger.mts accept`.
 - The ledger survives a compaction: the hook writes each open ledger's next step into the summary and into the context of the session that follows.
 - Only findings that **hold** go to a fixer. Each round is opened by `ledger.mts round <ticket> <node>`, one at a time, and taken by one fixer with all of that node's open ids. A finding left unfixed by decision, the user's or the review's triage, is taken out first with `ledger.mts accept <ticket> <id> "<why>"`; it stays under Still open with its reason.
-- `round` refuses a fourth round and a round after one that fixed none of the node's findings; the hook refuses a fixer with no round open, a third round not on opus, and the checker or the verifier on any model but opus. When either refuses, carry on: the findings go under Still open.
+- `round` records each worktree's content hash, and refuses a fourth round, a round after one that fixed none of the node's findings, and a round after one in which no worktree's content moved: an empty commit is not progress, and a `fixed` answered for such a round leaves the finding open. A git failure refuses the round in git's own words. The hook refuses a fixer with no round open, and any plugin agent dispatched with a `model` other than the one its file sets: dispatch them without `model`. When either refuses, carry on: the findings go under Still open.
 - `ledger.mts next <ticket>` says what is due, for a session that lost its place.
 - A finding never holds the pull request. A security finding is never left open for cost: it goes to the user.
-- A turn that ends while a ledger is open is held once, with what is due; ending it again waits, for an agent or a check, with the ledger kept. Close it once Still open names every open id, or `ledger.mts abandon <ticket> "<why>"` when the user stops the run or it is blocked on them.
+- A turn that ends while a ledger is open is held once, with what is due; ending it again waits, for a check, with the ledger kept. A turn that ends while an agent or a workflow the session started is still running is a wait already, and is not held. Close the ledger once Still open names every open id, or `ledger.mts abandon <ticket> "<why>"` when the user stops the run or it is blocked on them.
 
 ### Gate and pull request, in the session
 
 - Run the full gate in each worktree after each ticket, with that repository's own `AGENTS.md` command, and quote its output: a red gate found one ticket later is blamed on the wrong ticket.
 - Once every ticket of the run is built, push with `/sdlc:git-push`.
-- Open one pull request per repository: `## Sequence` first — the ticket or the epic, the previous pull request, the next, and the run's pull requests in the other repositories; a Conventional Commit title; a body that compares with the base branch, says what each ticket does, carries the gate's output and the mutation checks, lists parked lines, and holds `## Still open` from the ledger. Then close the ledger.
+- Open one pull request per repository: `## Sequence` first — the ticket or the epic, the previous pull request, the next, and the run's pull requests in the other repositories; a Conventional Commit title; a body that compares with the base branch, says what each ticket does, carries the gate's output and the mutation checks, lists parked lines, and holds `## Still open` and `## Notes` from the ledger and `## Assumptions`, one line per choice a builder reported where the ticket was silent, or none. Then close the ledger.
 - `Closes owner/repo#N` for each ticket with nothing parked, in the last pull request of the run to open; otherwise `Part of owner/repo#N`. An epic is never closed by a pull request.
 - Wait for CI with the Monitor tool on `gh pr checks <n> --watch`, never by polling, and quote its result in the report. A run that outlasts Monitor's deadline is reported as unfinished, never as green.
 - Never merge: a person does.
@@ -191,6 +196,7 @@ An epic's batch gets one walk over all its tickets, on the finished branch: a wa
 
 The session writes the result into the pull request body between `<!-- acceptance-walk:start -->` and `<!-- acceptance-walk:end -->`, with the head commit it walked.
 A failure is a finding of node `walk`, in a ledger the session starts for the walk: it gets the fix rounds above, each followed by a re-walk, and one still failing goes under Still open for the user.
+A walk proves the commit it ran on: when a later fix round, the review's included, moves HEAD, the walk is taken again on the new head, and the body's section is replaced with it.
 
 ## 7. Report
 

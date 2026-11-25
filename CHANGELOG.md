@@ -12,9 +12,16 @@ The repository is the plugins alone, renamed `claude-plugins`, with the marketpl
 
 - **`sdlc` runs from a workspace of checkouts as well as from one checkout.** A ticket changes its own repository unless its `### Repositories` section lists others; `/sdlc:build` then cuts one worktree and opens one pull request per repository, all below the session's folder in `.sdlc/runs/<item>/ws/`.
 - **Every skill that takes a ticket or a pull request names the valid forms when the argument is wrong:** `12`, `#12`, `<folder>#12`, `owner/repo#12`, a GitHub URL or a Jira key. A Jira key needs `JIRA_BASE_URL`, `JIRA_EMAIL` and `JIRA_API_TOKEN`, and is read over Jira's REST API with nothing installed. A pull request passed to `/sdlc:build` names `/sdlc:review` and the ticket it closes, a ticket passed to `/sdlc:review` with no pull request names `/sdlc:build`, and `/sdlc:build` with no argument proposes candidates and asks.
+- **Fix rounds converge on evidence.** A recheck answers only the ids its round carried, and a finding it adds is not recorded. A refutation counts only with the `<file>:<line>` that refutes it. `ledger.mts round` records each worktree's content hash and refuses a round after one in which nothing moved; a `fixed` answered for such a round leaves the finding open, and an empty commit is not progress. (#93)
+- **A low finding is a note:** at most three per agent, never verified, fixed or rechecked, listed under Notes in the pull request from `ledger.mts notes`. Every checking agent uses one severity scale. (#93)
+- **The verifier can answer `needs-design`,** which sends a finding the ticket cannot settle to the user as a question instead of to a fixer. (#93)
+- **The hooks refuse a write of a run's `ledger.jsonl` through Edit or Write,** block the tool call when a guard itself fails, and record a checking agent's report whoever dispatched the agent. Blocking on failure needs Claude Code 2.1.295 or later. (#93)
+- **The pull request lists Assumptions:** where a ticket is silent the builder picks the narrowest option and reports it. The builder proves each new test red on the base by an assertion, the checker files every change the ticket did not ask for and every test removed or skipped without a reason, the fixer never weakens a test to pass it, and the walker writes one proof row per done-when line. (#93)
 
 ### Changed
 
+- **Each agent's model is set only in its file.** The hook reads it there and refuses a plugin agent dispatched on any other model. The third fix round no longer moves the fixer to another model. (#93)
+- **A turn that ends while an agent or a workflow the session started is still running is no longer held by an open ledger;** the one hold is kept for a turn that ends with nothing running. (#93)
 - **BREAKING: the marketplace is `dsaenztagarro`, served from `dsaenztagarro/claude-plugins`.** Installs read `sdlc@dsaenztagarro` and `ds@dsaenztagarro`. On each machine, `claude plugin marketplace remove agent-sdlc`, then `claude plugin marketplace add dsaenztagarro/claude-plugins` and install both plugins again.
 - **`/sdlc:template-feedback` files its items on `dsaenztagarro/claude-plugins`**, where the pipeline is maintained.
 
