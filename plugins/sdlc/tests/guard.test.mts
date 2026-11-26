@@ -1,9 +1,11 @@
 // The hook behind the findings ledger. Contract: inside a session that owns
-// an open ledger, fix rounds converge or stop, the checker and the verifier
-// run on opus, no plugin agent pushes or merges, and a turn ending before
-// every open finding is fixed or listed under Still open is held once. Every other
-// session passes untouched. Without it, a session that compacted mid-loop
-// forgot the cap and ran a fourth round on the model that failed three.
+// an open ledger, fix rounds converge or stop, each plugin agent runs on the
+// model its file sets, no plugin agent pushes or merges, and a turn ending
+// before every open finding is fixed or listed under Still open is held once.
+// Two rules hold whoever asks: nothing writes a ledger but its script, and a
+// checking agent's report is recorded. Every other session passes untouched.
+// Without it, a session that compacted mid-loop forgot the cap and ran a
+// fourth round, and a session short of an answer wrote it into the ledger.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -46,12 +48,11 @@ const fixRound = (cwd: string, model?: string) => {
 describe('fix rounds', () => {
   test('a fourth round for a node is refused', () => {
     const cwd = owned();
-    expect(fixRound(cwd)).toBeNull();
-    ledger(cwd).record('check', 'F1: fixed');
-    expect(fixRound(cwd)).toBeNull();
-    ledger(cwd).record('check', 'F2: fixed\n- [low] a.rb:3: three');
-    expect(fixRound(cwd, 'opus')).toBeNull();
-    ledger(cwd).record('check', 'F3: fixed\n- [low] a.rb:4: four');
+    ledger(cwd).record('check', '- [high] a.rb:3: three\n- [high] a.rb:4: four');
+    for (const id of ['F1', 'F2', 'F3']) {
+      expect(fixRound(cwd)).toBeNull();
+      ledger(cwd).record('check', `${id}: fixed`);
+    }
     expect(refused(cwd)).toMatch(/3 fix rounds/);
   });
 
@@ -60,16 +61,6 @@ describe('fix rounds', () => {
     expect(fixRound(cwd)).toBeNull();
     ledger(cwd).record('check', 'F1: open\nF2: open');
     expect(refused(cwd)).toMatch(/fixed none/);
-  });
-
-  test('the last round runs on opus', () => {
-    const cwd = owned();
-    fixRound(cwd);
-    ledger(cwd).record('check', 'F1: fixed');
-    fixRound(cwd);
-    ledger(cwd).record('check', 'F2: fixed\n- [low] a.rb:3: three');
-    expect(reason(fixRound(cwd, 'sonnet'))).toMatch(/model: opus/);
-    expect(decide(fixer(cwd, 'opus'))).toBeNull();
   });
 
   test('a fixer takes only a round the ledger opened, and each round once', () => {
@@ -81,9 +72,9 @@ describe('fix rounds', () => {
 
   test('a round whose findings all close before its fixer is withdrawn', () => {
     const cwd = owned();
-    ledger(cwd).record('rules', '- [low] a.js:4: builds markup (stimulus.md)');
+    ledger(cwd).record('rules', '- [medium] a.js:4: builds markup (stimulus.md)');
     expect(refused(cwd)).toBeNull();
-    ledger(cwd).record('verify', 'F1: refuted\nF2: refuted');
+    ledger(cwd).record('verify', 'F1: refuted — a.rb:1 guards it\nF2: refuted — a.rb:2 guards it');
     expect(refused(cwd, 'rules')).toBeNull();
     expect(ledger(cwd).rounds('check')).toBe(0);
   });
@@ -97,14 +88,73 @@ describe('fix rounds', () => {
 });
 
 describe('models', () => {
-  test('the checker and the verifier are refused on any model but opus', () => {
+  const plugin = path.resolve(import.meta.dirname, '..');
+  const agents = fs.readdirSync(path.join(plugin, 'agents')).filter((file) => file.endsWith('.md'));
+  const modelIn = (file: string) => /^model:\s*(\S+)/m.exec(fs.readFileSync(path.join(plugin, 'agents', file), 'utf-8'))?.[1];
+  const agent = (cwd: string, subagent_type: string, model?: string): HookEvent => ({
+    ...fixture('pre-tool-use-agent-main-session.json'), session_id: SESSION, cwd,
+    tool_input: { subagent_type, prompt: 'check', ...(model ? { model } : {}) },
+  });
+
+  test("an agent dispatched on a model other than its file's is refused", () => {
     const cwd = owned();
-    const recorded = fixture('pre-tool-use-agent-main-session.json');
-    for (const subagent_type of ['sdlc:checker', 'sdlc:verifier']) {
-      const event = { ...recorded, session_id: SESSION, cwd, tool_input: { ...recorded.tool_input, subagent_type } };
-      expect(reason(decide(event))).toMatch(/runs on opus/);
-      expect(decide({ ...event, tool_input: { subagent_type, prompt: 'check' } })).toBeNull();
+    for (const file of agents.filter((name) => name !== 'fixer.md')) {
+      const type = `sdlc:${path.basename(file, '.md')}`;
+      expect(reason(decide(agent(cwd, type, 'another-model')))).toMatch(new RegExp(`${type} runs on ${modelIn(file)}`));
+      expect(decide(agent(cwd, type, modelIn(file)))).toBeNull();
+      expect(decide(agent(cwd, type))).toBeNull();
     }
+  });
+
+  test("a fixer's last round runs on its file's model like every other", () => {
+    const cwd = owned();
+    ledger(cwd).record('check', '- [high] a.rb:3: three');
+    for (const id of ['F1', 'F2']) {
+      expect(fixRound(cwd)).toBeNull();
+      ledger(cwd).record('check', `${id}: fixed`);
+    }
+    expect(refused(cwd)).toBeNull();
+    expect(reason(decide(fixer(cwd, 'another-model')))).toMatch(/sdlc:fixer runs on/);
+    expect(decide(fixer(cwd))).toBeNull();
+    expect(ledger(cwd).rounds('check')).toBe(3);
+  });
+
+  test("an agent's name matches its file whatever its case", () => {
+    const cwd = owned();
+    expect(reason(decide(agent(cwd, 'SDLC:Checker', 'another-model')))).toMatch(/runs on/);
+    decide({ ...fixture('subagent-stop.json'), session_id: SESSION, cwd, agent_transcript_path: undefined,
+      agent_type: 'SDLC:Rules', last_assistant_message: '- [medium] a.js:4: builds markup (stimulus.md)' });
+    expect(ledger(cwd).open('rules')).toHaveLength(1);
+  });
+
+  test("an agent's model is set only in its file", () => {
+    expect(agents.filter((file) => !modelIn(file))).toEqual([]);
+    const named = ['scripts', 'hooks'].flatMap((dir) => fs.readdirSync(path.join(plugin, dir)).map((file) => path.join(dir, file)))
+      .filter((file) => /\b(opus|sonnet|haiku|fable)\b/i.test(fs.readFileSync(path.join(plugin, file), 'utf-8')));
+    expect(named).toEqual([]);
+  });
+});
+
+describe('the ledger file', () => {
+  const write = (cwd: string, tool_name: string, input: Record<string, string>, fields: HookEvent = {}): HookEvent =>
+    ({ ...fixture('pre-tool-use-bash-main-session.json'), cwd, tool_name, tool_input: input, ...fields });
+
+  test("no session or agent writes a run's ledger through Edit or Write", () => {
+    const cwd = owned();
+    const file = path.join(ledger(cwd).folder, 'ledger.jsonl');
+    expect(reason(decide(write(cwd, 'Edit', { file_path: file, old_string: 'open', new_string: 'fixed' })))).toMatch(/ledger\.mts/);
+    expect(reason(decide(write(cwd, 'Write', { file_path: file.toUpperCase(), content: '' }, { session_id: 'someone-else' })))).toMatch(/ledger\.mts/);
+    expect(reason(decide(write(cwd, 'NotebookEdit', { notebook_path: '.sdlc/runs/12/ledger.jsonl' }, { agent_type: 'sdlc:fixer' })))).toMatch(/ledger\.mts/);
+    expect(decide(write(cwd, 'Write', { file_path: path.join(cwd, 'app', 'ledger.rb'), content: '' }))).toBeNull();
+  });
+
+  test('every PreToolUse hook blocks the call when it fails', () => {
+    const { hooks } = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, '..', 'hooks', 'hooks.json'), 'utf-8'));
+    const entries = hooks.PreToolUse.flatMap((group: any) => group.hooks);
+    expect(entries.length).toBeGreaterThan(0);
+    expect(entries.filter((hook: any) => hook.onFailure !== 'block')).toEqual([]);
+    expect(hooks.PreToolUse.map((group: any) => group.matcher).join('|').split('|').sort())
+      .toEqual(['Agent', 'Bash', 'Edit', 'NotebookEdit', 'Write']);
   });
 });
 
@@ -146,10 +196,10 @@ describe('recording reports', () => {
     const cwd = owned();
     const transcript = path.join(cwd, 'agent.jsonl');
     fs.writeFileSync(transcript, `${JSON.stringify({ message: { content: [
-      { type: 'tool_use', name: 'SubagentHandback', input: { message: 'F1: fixed' } },
+      { type: 'tool_use', name: 'SubagentHandback', input: { message: '- [high] a.rb:3: three' } },
     ] } })}\n`);
     decide(subagentStop(cwd, { agent_type: 'sdlc:checker', agent_transcript_path: transcript, last_assistant_message: 'Handed back.' }));
-    expect(ledger(cwd).open().map((f) => f.id)).toEqual(['F2']);
+    expect(ledger(cwd).open().map((f) => f.id)).toEqual(['F1', 'F2', 'F3']);
   });
 
   test('a report goes to the ledger the session started last, counting a reopen as a start', () => {
@@ -165,6 +215,22 @@ describe('recording reports', () => {
     decide(subagentStop(cwd, { agent_type: 'sdlc:rules', last_assistant_message: '- [medium] a.js:4: builds markup (stimulus.md)' }));
     expect(ledger(cwd).open('rules')).toHaveLength(1);
     expect(find(cwd, '13')!.open()).toHaveLength(0);
+  });
+
+  test("a checking agent's report is recorded whoever dispatched it", () => {
+    const cwd = owned();
+    decide(subagentStop(cwd, { session_id: 'a-workflow-run', agent_type: 'sdlc:rules', last_assistant_message: '- [medium] a.js:4: builds markup (stimulus.md)' }));
+    expect(ledger(cwd).open('rules').map((f) => f.id)).toEqual(['F3']);
+  });
+
+  test("a report from an agent working in a run's worktree goes to that run's ledger", () => {
+    const cwd = owned();
+    const other = start(cwd, '13');
+    const worktree = path.join(ledger(cwd).folder, 'ws', 'api');
+    fs.mkdirSync(worktree, { recursive: true });
+    decide(subagentStop(worktree, { session_id: 'a-workflow-run', agent_type: 'sdlc:rules', last_assistant_message: '- [medium] a.js:4: builds markup (stimulus.md)' }));
+    expect(ledger(cwd).open('rules')).toHaveLength(1);
+    expect(find(cwd, other.key)!.open()).toHaveLength(0);
   });
 
   test('an agent that checks nothing records nothing', () => {
@@ -199,6 +265,15 @@ describe('stopping', () => {
   test('a turn held once may end when the session stops again, so it can wait for an agent or a check', () => {
     const cwd = owned();
     expect(decide({ ...stop(cwd), stop_hook_active: true })).toBeNull();
+  });
+
+  test('a turn ends without spending its hold while an agent the session started is running', () => {
+    const cwd = owned();
+    const [running] = fixture('subagent-stop.json').background_tasks;
+    expect(decide({ ...stop(cwd), background_tasks: [running] })).toBeNull();
+    expect(decide({ ...stop(cwd), background_tasks: [{ id: 'w1', type: 'workflow', status: 'running', name: 'build' }] })).toBeNull();
+    expect(reason(decide({ ...stop(cwd), background_tasks: [{ ...running, status: 'completed' }] }))).toMatch(/12: F1 F2 open/);
+    expect(reason(decide({ ...stop(cwd), background_tasks: [{ id: 's1', type: 'shell', status: 'running', command: 'npm test' }] }))).toMatch(/12: F1 F2 open/);
   });
 
   test('a closed or abandoned ledger lets the turn end', () => {

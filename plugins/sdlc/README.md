@@ -24,7 +24,7 @@ Nothing in it names a project: what it needs to know, it reads from the adopter'
 
 A project with a product-owned UI also needs [`ds`](../ds/README.md): `/sdlc:build`'s design gate calls it, and stops when it is missing.
 
-`/sdlc:build` and `/sdlc:review` dispatch the plugin's agents — builder, checker, rules, verifier, security, fixer, walker — each with its own tools and model, and keep a findings ledger whose hooks make fix rounds converge or stop. They need Node 22.18 or later. A session that never starts a ledger never runs Node. A code-intelligence plugin for the project's language gives the agents diagnostics and references through the LSP tool, and turning on push notifications in `/config` tells you when a run needs you.
+`/sdlc:build` and `/sdlc:review` dispatch the plugin's agents — builder, checker, rules, verifier, security, fixer, walker — each with its own tools and model, and keep a findings ledger whose hooks make fix rounds converge or stop. They need Node 22.18 or later and Claude Code 2.1.295 or later. A session that never starts a ledger never runs Node. Below a folder that holds a run, a hook that cannot run blocks the tool call it guards, so a machine without that Node cannot edit, run a command or dispatch an agent there until Node is installed or the `.sdlc` folder is removed. A code-intelligence plugin for the project's language gives the agents diagnostics and references through the LSP tool, and turning on push notifications in `/config` tells you when a run needs you.
 
 Its tests: `npm --prefix plugins/sdlc/dev ci && npm --prefix plugins/sdlc/dev test`.
 
@@ -137,6 +137,9 @@ Without the plugin, follow its contract by hand:
 - **One worktree per writer, one pull request per batch and repository;** a person merges.
 - **A ticket changes its own repository,** unless a `### Repositories` section lists every repository it changes.
 - **Review findings are threads on the pull request**, fixed one commit each.
-- **A finding has an id, and a recheck answers it by id**, fixed or open; at most three fix rounds, none after a round that fixed nothing, and what is left is listed under Still open in the pull request.
+- **A finding has an id, and a recheck answers it by id**, fixed or open, and adds no finding; at most three fix rounds, none after a round that fixed nothing or changed no file, and what is left is listed under Still open in the pull request.
+- **A finding is high, medium or low on one scale:** high breaks a done-when line, loses or exposes data, opens a security hole, or blocks a person; medium is a real defect no line covers; low is a note, at most three per check, listed under Notes and never fixed.
+- **A verdict carries its evidence:** a refutation names the file and line that refute it, or the finding holds; a finding the ticket cannot settle is a question for a person, never a fix.
+- **Where the ticket is silent, the builder picks the narrowest option** and the pull request lists it under Assumptions.
 - **A ticket closes only with evidence:** each done-when line against a named test or a command's real output; a live check an agent cannot run goes to a person as exact commands.
 - **A release versions from the Conventional Commit types** since the last tag, into a CHANGELOG entry and an annotated tag.

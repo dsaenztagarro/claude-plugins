@@ -69,15 +69,25 @@ A workflow is written when real use shows a need these cannot hold, for that use
 
 ### `sdlc` ships agents, two hooks and one Node script, to make fix rounds converge
 
-Every stage that judges a change is a plugin agent whose file fixes its tools and model: the checker and the verifier run on opus, a different model from the builder and the fixer whose work they check.
-Every checking agent writes a finding as `- [high|medium|low] <file>:<line>: <what>`; a verifier refutes each before any fix spends work on it, as Anthropic's own review plugins do; and a path-scoped rules agent holds each changed file to the `.claude/rules/` that match it, since a rule loads only when a matching file is read.
+Every stage that judges a change is a plugin agent whose file fixes its tools and model: the agents that check and verify run on a different model from the agents whose work they check.
+An agent's model is set in its file alone. No script names one: the hook reads it from the file and refuses a dispatch that passes another, since a dispatch's own `model` would otherwise override the file.
+Every checking agent writes a finding as `- [high|medium|low] <file>:<line>: <what>`, on one severity scale; a verifier refutes each before any fix spends work on it, as Anthropic's own review plugins do; and a path-scoped rules agent holds each changed file to the `.claude/rules/` that match it, since a rule loads only when a matching file is read.
 
 A findings ledger numbers each finding, records a recheck's answer by id, and counts fix rounds per node.
-Its hooks hold, in the session that started a ledger only: three rounds per node, none after a round that fixed nothing, the third on opus; no plugin agent pushes or merges; a turn ending while a ledger is open is held once, since holding every stop would block each wait for an agent or a check.
-They also record each checking agent's report as it finishes, so a session that forgets to record one loses no finding, and carry each open ledger's next step through a compaction.
+It makes the rounds converge on evidence rather than on what an agent says:
+
+- **The set of findings only shrinks once a round starts.** A report that answers an id of its node's last fix round is that round's recheck: its answers count for the ids the round carried, and a finding it adds is not recorded. What marks a recheck is what it answers, not when it arrives, so an interrupted agent's empty report uses up nothing and a check of the next ticket is still a check. A recheck that may add findings never shows a loop converging; a defect a fix introduces is left to the gate and the review.
+- **A low finding is a note:** three per agent at most, listed apart, never verified, fixed or rechecked, so a round's work goes to what breaks something.
+- **A verdict counts only with its evidence.** A refutation names the file and line that refute it, or the finding holds. A finding the ticket cannot settle is answered `needs-design`: a question for the user, which no fixer takes.
+- **Progress is content that moved.** A round records each worktree's content hash, the tree of everything in it, committed or not. A round after one in which no hash moved is refused, and `fixed` answered for such a round leaves the finding open. The hash and not HEAD, since an empty commit moves HEAD. A git failure refuses the round in git's own words: a missing hash is never read as a value.
+
+Its hooks hold, in the session that started a ledger only: three rounds per node, none after a round that fixed nothing or moved nothing; each plugin agent on its file's model; no plugin agent pushes or merges; a turn ending while a ledger is open is held once, since holding every stop would block each wait for a check, and a turn that ends while an agent or a workflow the session started is still running is not held at all.
+Two rules hold whoever asks. Nothing writes a run's ledger but its script: the hook refuses an edit of the file, so an answer reaches it only as a report. And each checking agent's report is recorded as the agent finishes, by its type alone, so a session that forgets to record one loses no finding and an agent something other than the session dispatched is recorded the same way.
+The hooks carry each open ledger's next step through a compaction.
+Every hook that guards a tool call blocks it when the hook itself fails: a guard that crashes and lets the call through holds nothing. The cost is that a machine without the Node the plugin needs cannot use those tools below a folder that holds a run.
 Why hooks rather than skill text: a session that compacts mid-loop keeps "fixing review findings" and drops the round count, and the next round then runs past the cap on the model that already failed; the ledger on disk survives that, and a hook refuses the round.
 A session below no `.sdlc/runs` folder never starts Node, so a project that never builds through the plugin pays nothing.
-The plugin needs Node 22.18 or later, which runs the TypeScript directly; its tests and type check live in `plugins/sdlc/dev/`, so an install receives no dependency.
+The plugin needs Node 22.18 or later, which runs the TypeScript directly, and Claude Code 2.1.295 or later, the first whose hooks can block on their own failure; its tests and type check live in `plugins/sdlc/dev/`, so an install receives no dependency.
 
 ### The pipeline uses what Claude Code already ships
 
@@ -95,6 +105,7 @@ A workflow stage that a later stage, or the calling session, already covers is r
 - **APM packages deployed into each project.** Every project carried its own copy, and an update reached a project only when someone re-ran the install there.
 - **`sdlc` declaring `ds` in its `plugin.json` `dependencies`.** It would install the design skills on every machine, UI or not; the design gate instead stops and names the install command when a project with a design section lacks the plugin.
 - **Copying skills onto each machine from a config repository.** It is the same copy problem one level up, with no namespace and no version.
+- **A last fix round on a stronger model than the fixer's own.** It needs a script that names a model or an agent that runs on two, and a round is now judged by the content it moved, not by which model wrote it.
 - **Depending on the `ralph-loop` plugin for the Stop hook.** It feeds one prompt back until a promised phrase appears, where a build is a pipeline of different nodes, and it would be a second install on every machine; the ledger copies its shape, a state file and a short Stop hook.
 
 ## Left open

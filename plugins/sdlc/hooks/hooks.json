@@ -1,10 +1,10 @@
 {
-  "description": "The findings ledger's rules: fix rounds converge or stop, the checker and verifier run on opus, no agent pushes or merges, checking agents' reports are recorded, an open ledger survives a compaction and holds a turn's end once. Node starts only below a folder holding .sdlc/runs.",
+  "description": "The findings ledger's rules: fix rounds converge or stop, each agent runs on the model its file sets, no agent pushes or merges, nothing but its script writes a ledger, checking agents' reports are recorded, an open ledger survives a compaction and holds a turn's end once. A PreToolUse hook that fails blocks the call. Node starts only below a folder holding .sdlc/runs.",
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Agent|Bash",
-        "hooks": [{ "type": "command", "command": "d=$PWD; while [ -n \"$d\" ]; do [ -d \"$d/.sdlc/runs\" ] && exec node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mts\"; d=${d%/*}; done", "timeout": 10 }]
+        "matcher": "Agent|Bash|Edit|Write|NotebookEdit",
+        "hooks": [{ "type": "command", "command": "d=$PWD; while [ -n \"$d\" ]; do [ -d \"$d/.sdlc/runs\" ] && exec node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mts\"; d=${d%/*}; done", "timeout": 10, "onFailure": "block" }]
       }
     ],
     "PostToolUse": [
@@ -15,7 +15,6 @@
     ],
     "SubagentStop": [
       {
-        "matcher": "sdlc:(checker|rules|security|verifier|walker)",
         "hooks": [{ "type": "command", "command": "d=$PWD; while [ -n \"$d\" ]; do [ -d \"$d/.sdlc/runs\" ] && exec node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mts\"; d=${d%/*}; done", "timeout": 10 }]
       }
     ],
